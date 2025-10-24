@@ -1,0 +1,17 @@
+# Node
+node_modules/
+.env
+build/
+dist/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# 
+images/
+testImg/
+uploads/
+.jpg
