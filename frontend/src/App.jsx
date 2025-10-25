@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { socket } from "./socket";
 import { api } from "./api";
 import { useAuth } from "./context/useAuth";
@@ -15,7 +15,6 @@ export default function App() {
   const [auctions, setAuctions] = useState([]);
   const [selectedAuction, setSelectedAuction] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
-
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dingSound = useRef(null);
@@ -26,26 +25,27 @@ export default function App() {
   }, []);
 
   // Load auctions from backend
-  const loadAuctions = async () => {
+  const loadAuctions = useCallback(async () => {
     try {
       const { data } = await api.get("/api/auctions");
-      const formatted = data.map((a) => ({
-        ...a,
-        highestBidderName: a.highestBidder?.username || null,
-        bidHistory:
-          a.bidHistory?.map((b) => ({
-            ...b,
-            bidderName: b.userId?.username || "Unknown",
-          })) || [],
-      }));
-      setAuctions(formatted);
+      setAuctions(
+        data.map((a) => ({
+          ...a,
+          highestBidderName: a.highestBidder?.username || null,
+          bidHistory:
+            a.bidHistory?.map((b) => ({
+              ...b,
+              bidderName: b.userId?.username || "Unknown",
+            })) || [],
+        }))
+      );
     } catch (err) {
       console.error("fetch auctions error:", err);
     }
-  };
+  }, []);
 
   // Load notifications from backend
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     if (!user) return;
     try {
       const { data } = await api.get("/api/notifications", {
@@ -55,20 +55,23 @@ export default function App() {
     } catch (err) {
       console.error("fetch notifications error:", err);
     }
-  };
+  }, [user]);
 
+  // Socket setup & live updates
   useEffect(() => {
     if (!user) return;
 
     loadAuctions();
     loadNotifications();
 
-    // Setup socket
     socket.auth = { token: user.token };
     if (!socket.connected) socket.connect();
 
-    // Socket listeners
-    const onAuctionCreated = (newAuction) => loadAuctions(); // reload after new auction
+    // Auction events
+    const onAuctionCreated = (newAuction) => {
+      setAuctions((prev) => [newAuction, ...prev]);
+    };
+
     const onBidUpdated = (data) => {
       setAuctions((prev) =>
         prev.map((a) =>
@@ -82,7 +85,18 @@ export default function App() {
             : a
         )
       );
+
+      // Also update selectedAuction if the user is inside that room
+      if (selectedAuction?._id === data.auctionId) {
+        setSelectedAuction((prev) => ({
+          ...prev,
+          currentBid: data.currentBid,
+          highestBidderName: data.highestBidderName,
+          bidHistory: data.bidHistory || prev.bidHistory,
+        }));
+      }
     };
+
     const onAuctionEnded = (data) => {
       setAuctions((prev) =>
         prev.map((a) =>
@@ -91,7 +105,16 @@ export default function App() {
             : a
         )
       );
+
+      if (selectedAuction?._id === data.auctionId) {
+        setSelectedAuction((prev) => ({
+          ...prev,
+          ended: true,
+          currentBid: data.finalBid ?? prev.currentBid,
+        }));
+      }
     };
+
     const onNotification = (n) => {
       dingSound.current?.play();
       setNotifications((prev) => [n, ...prev]);
@@ -108,7 +131,7 @@ export default function App() {
       socket.off("auction-ended", onAuctionEnded);
       socket.off("notification", onNotification);
     };
-  }, [user]);
+  }, [user, loadAuctions, loadNotifications, selectedAuction]);
 
   const unread = notifications.length;
 
@@ -127,13 +150,16 @@ export default function App() {
       />
     );
 
+  const currentAuction = selectedAuction
+    ? auctions.find((a) => a._id === selectedAuction._id) || selectedAuction
+    : null;
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       {/* Navbar */}
       <div className="flex justify-between items-center mb-4 relative">
         <h1 className="font-bold text-xl">Welcome, {user?.username}</h1>
 
-        {/* 🔔 Notification Bell */}
         <div
           className="relative mr-4 cursor-pointer"
           onClick={() => setShowDropdown(!showDropdown)}
@@ -171,7 +197,7 @@ export default function App() {
         </button>
       </div>
 
-      {!selectedAuction && !showCreate && (
+      {!currentAuction && !showCreate && (
         <>
           <div className="flex justify-center mb-4">
             <button
@@ -189,19 +215,16 @@ export default function App() {
         <CreateAuction
           onCreated={(created) => {
             setShowCreate(false);
-            loadAuctions(); // reload auctions from DB
+            loadAuctions();
             setSelectedAuction(created);
           }}
           onBack={() => setShowCreate(false)}
         />
       )}
 
-      {selectedAuction && (
+      {currentAuction && (
         <AuctionRoom
-          auction={
-            auctions.find((a) => a._id === selectedAuction._id) ||
-            selectedAuction
-          }
+          auction={currentAuction}
           currentUser={user}
           onBack={() => setSelectedAuction(null)}
         />

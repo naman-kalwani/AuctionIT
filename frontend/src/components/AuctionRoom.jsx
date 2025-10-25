@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { socket } from "../socket";
 
 export default function AuctionRoom({
@@ -10,25 +10,35 @@ export default function AuctionRoom({
   const [bidAmount, setBidAmount] = useState("");
   const [message, setMessage] = useState("");
   const [timeLeft, setTimeLeft] = useState("");
+  const timerRef = useRef(null);
 
+  const isOwner = auction.owner?.username
+    ? auction.owner.username === currentUser?.username
+    : auction.owner === currentUser?.id;
+
+  const canBid = !auction.ended && !isOwner;
+  const showBidHistory = isOwner;
+
+  // Sync auction updates & join socket room
   useEffect(() => {
-    if (!auction) return;
+    if (!initialAuction?._id) return;
 
-    socket.emit("join-auction", auction._id);
+    setAuction(initialAuction);
+    socket.emit("join-auction", initialAuction._id);
 
     const onBidUpdated = (data) => {
-      if (data.auctionId === auction._id) {
+      if (data.auctionId === initialAuction._id) {
         setAuction((prev) => ({
           ...prev,
           currentBid: data.currentBid,
           highestBidderName: data.highestBidderName,
-          bidHistory: data.bidHistory,
+          bidHistory: data.bidHistory || prev.bidHistory,
         }));
       }
     };
 
     const onAuctionEnded = (data) => {
-      if (data.auctionId === auction._id) {
+      if (data.auctionId === initialAuction._id) {
         setAuction((prev) => ({ ...prev, ended: true }));
         setMessage(
           `Auction ended. Winner: ${data.winner}, Final Bid: ₹${data.finalBid}`
@@ -40,28 +50,33 @@ export default function AuctionRoom({
     socket.on("auction-ended", onAuctionEnded);
 
     return () => {
-      socket.emit("leave-auction", auction._id);
+      socket.emit("leave-auction", initialAuction._id);
       socket.off("bid-updated", onBidUpdated);
       socket.off("auction-ended", onAuctionEnded);
     };
-  }, [auction]);
+  }, [initialAuction]);
 
   // Countdown timer
   useEffect(() => {
     if (!auction) return;
-    const interval = setInterval(() => {
+
+    const updateTimer = () => {
       const diff = new Date(auction.endAt) - new Date();
       if (diff <= 0) {
         setTimeLeft("Auction ended");
-        clearInterval(interval);
         setAuction((prev) => ({ ...prev, ended: true }));
+        clearInterval(timerRef.current);
       } else {
         const minutes = Math.floor(diff / 60000);
         const seconds = Math.floor((diff % 60000) / 1000);
         setTimeLeft(`${minutes}m ${seconds}s`);
       }
-    }, 1000);
-    return () => clearInterval(interval);
+    };
+
+    updateTimer();
+    timerRef.current = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(timerRef.current);
   }, [auction]);
 
   const placeBid = () => {
@@ -72,13 +87,8 @@ export default function AuctionRoom({
     }
     socket.emit("place-bid", { auctionId: auction._id, amount });
     setBidAmount("");
+    setMessage("");
   };
-
-  const isOwner = auction.owner?.username
-    ? auction.owner.username === currentUser?.username
-    : auction.owner === currentUser?.id;
-  const canBid = !auction.ended && !isOwner;
-  const showBidHistory = isOwner;
 
   return (
     <div className="max-w-xl mx-auto p-6 border rounded shadow bg-white mt-6">

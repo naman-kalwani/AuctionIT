@@ -118,7 +118,7 @@ io.on("connection", (socket) => {
       await auction.save();
 
       // Emit update to auction room
-      io.to(auctionId).emit("bid-updated", {
+      io.emit("bid-updated", {
         auctionId: auction._id,
         currentBid: auction.currentBid,
         highestBidderName: socket.user.username,

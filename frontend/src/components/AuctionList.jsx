@@ -1,4 +1,3 @@
-// src/components/AuctionList.jsx
 import { useState, useMemo } from "react";
 
 export default function AuctionList({ auctions = [], onSelect }) {
@@ -21,7 +20,7 @@ export default function AuctionList({ auctions = [], onSelect }) {
       })
       .sort((a, b) => {
         // Live auctions first, ended auctions last
-        if (a.ended === b.ended) return 0;
+        if (a.ended === b.ended) return b.currentBid - a.currentBid; // highest bid first
         return a.ended ? 1 : -1;
       });
   }, [auctions, searchTerm, category]);
