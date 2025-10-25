@@ -31,30 +31,3 @@ const auctionSchema = new mongoose.Schema(
 );
 
 export default mongoose.model("Auction", auctionSchema);
-
-// import mongoose from "mongoose";
-
-// const auctionSchema = new mongoose.Schema(
-//   {
-//     title: String,
-//     category: String,
-//     description: String,
-//     image: String,
-//     basePrice: Number,
-//     currentBid: Number,
-//     highestBidder: String,
-//     bids: [
-//       {
-//         bidderName: String,
-//         amount: Number,
-//         at: { type: Date, default: Date.now },
-//       },
-//     ],
-//     endAt: Date,
-//     ended: { type: Boolean, default: false },
-//     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // NEW
-//   },
-//   { timestamps: true }
-// );
-
-// export default mongoose.model("Auction", auctionSchema);
