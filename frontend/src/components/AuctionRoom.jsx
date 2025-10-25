@@ -1,6 +1,5 @@
-// src/components/AuctionRoom.jsx
 import { useEffect, useState } from "react";
-import { io as socketIOClient } from "socket.io-client";
+import { socket } from "../socket";
 
 export default function AuctionRoom({
   auction: initialAuction,
@@ -10,24 +9,14 @@ export default function AuctionRoom({
   const [auction, setAuction] = useState(initialAuction);
   const [bidAmount, setBidAmount] = useState("");
   const [message, setMessage] = useState("");
-  const [socket, setSocket] = useState(null);
   const [timeLeft, setTimeLeft] = useState("");
 
-  // Setup socket
   useEffect(() => {
     if (!auction) return;
 
-    const newSocket = socketIOClient(
-      import.meta.env.VITE_SOCKET_URL || "http://localhost:5000",
-      {
-        auth: { token: currentUser?.token },
-      }
-    );
+    socket.emit("join-auction", auction._id);
 
-    setSocket(newSocket);
-    newSocket.emit("join-auction", auction._id);
-
-    newSocket.on("bid-updated", (data) => {
+    const onBidUpdated = (data) => {
       if (data.auctionId === auction._id) {
         setAuction((prev) => ({
           ...prev,
@@ -36,22 +25,26 @@ export default function AuctionRoom({
           bidHistory: data.bidHistory,
         }));
       }
-    });
+    };
 
-    newSocket.on("auction-ended", (data) => {
+    const onAuctionEnded = (data) => {
       if (data.auctionId === auction._id) {
         setAuction((prev) => ({ ...prev, ended: true }));
         setMessage(
           `Auction ended. Winner: ${data.winner}, Final Bid: ₹${data.finalBid}`
         );
       }
-    });
+    };
+
+    socket.on("bid-updated", onBidUpdated);
+    socket.on("auction-ended", onAuctionEnded);
 
     return () => {
-      newSocket.emit("leave-auction", auction._id);
-      newSocket.disconnect();
+      socket.emit("leave-auction", auction._id);
+      socket.off("bid-updated", onBidUpdated);
+      socket.off("auction-ended", onAuctionEnded);
     };
-  }, [auction, currentUser]);
+  }, [auction]);
 
   // Countdown timer
   useEffect(() => {
@@ -72,25 +65,18 @@ export default function AuctionRoom({
   }, [auction]);
 
   const placeBid = () => {
-    if (
-      !bidAmount ||
-      Number(bidAmount) <= (auction?.currentBid ?? auction?.basePrice ?? 0)
-    ) {
+    const amount = Number(bidAmount);
+    if (!amount || amount <= (auction.currentBid ?? auction.basePrice ?? 0)) {
       setMessage("❌ Bid must be higher than current bid");
       return;
     }
-    socket.emit("place-bid", {
-      auctionId: auction._id,
-      amount: Number(bidAmount),
-    });
+    socket.emit("place-bid", { auctionId: auction._id, amount });
     setBidAmount("");
   };
 
-  // Check if current user is the auction owner
   const isOwner = auction.owner?.username
     ? auction.owner.username === currentUser?.username
     : auction.owner === currentUser?.id;
-
   const canBid = !auction.ended && !isOwner;
   const showBidHistory = isOwner;
 

@@ -11,13 +11,19 @@ export default function AuctionList({ auctions = [], onSelect }) {
   }, [auctions]);
 
   const filtered = useMemo(() => {
-    return auctions.filter((a) => {
-      const matchTitle = (a.title || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      const matchCategory = category === "All" || a.category === category;
-      return matchTitle && matchCategory;
-    });
+    return auctions
+      .filter((a) => {
+        const matchTitle = (a.title || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
+        const matchCategory = category === "All" || a.category === category;
+        return matchTitle && matchCategory;
+      })
+      .sort((a, b) => {
+        // Live auctions first, ended auctions last
+        if (a.ended === b.ended) return 0;
+        return a.ended ? 1 : -1;
+      });
   }, [auctions, searchTerm, category]);
 
   return (

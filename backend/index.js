@@ -10,9 +10,14 @@ import jwt from "jsonwebtoken";
 
 import auctionRoutes from "./routes/auctionRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+
+import Auction from "./models/auction.js";
+import Notification from "./models/notification.js";
 
 dotenv.config();
 const app = express();
+
 app.use(helmet());
 app.use(
   cors({
@@ -22,16 +27,23 @@ app.use(
 );
 app.use(express.json({ limit: "5mb" }));
 
+// HTTP + Socket.io server
 const httpServer = createServer(app);
 export const io = new Server(httpServer, {
   cors: { origin: process.env.CORS_ORIGIN || "*" },
   pingTimeout: 20000,
-  transports: ["polling", "websocket"],
 });
 
-app.set("io", io);
+// Track online users
+const onlineUsers = new Map();
 
-// MongoDB Connection
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/auctions", auctionRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.get("/", (req, res) => res.send("Auction backend running..."));
+
+// Connect to MongoDB
 (async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
@@ -40,150 +52,152 @@ app.set("io", io);
     });
     console.log("✅ MongoDB Connected");
   } catch (err) {
-    console.error("❌ Mongo Error:", err);
+    console.error("❌ MongoDB connection error:", err);
     process.exit(1);
   }
 })();
 
-// API Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/auctions", auctionRoutes);
-app.get("/", (req, res) => res.send("Auction backend running..."));
+// ------------------- SOCKET.IO -------------------
 
-// SOCKET.IO AUTH
+// WebSocket auth
 io.use((socket, next) => {
-  const token = socket.handshake.auth?.token;
-  if (!token) {
-    socket.user = null;
-    return next();
-  }
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.user = decoded; // { id, username, email }
+    const token = socket.handshake.auth?.token;
+    socket.user = token ? jwt.verify(token, process.env.JWT_SECRET) : null;
   } catch {
     socket.user = null;
   }
   next();
 });
 
-// SOCKET EVENTS
+// Socket events
 io.on("connection", (socket) => {
-  console.log(
-    "🔌 Client connected:",
-    socket.id,
-    "| User:",
-    socket.user?.username ?? "Guest"
-  );
+  const userId = socket.user?.id;
+  if (userId) onlineUsers.set(userId, socket.id);
 
+  // Join / Leave Auction Room
   socket.on("join-auction", (auctionId) => {
-    if (!auctionId) return;
-    socket.join(String(auctionId));
-    socket.emit("joined-auction", {
-      auctionId,
-      message: "Joined successfully",
-    });
+    if (auctionId) socket.join(auctionId);
   });
 
   socket.on("leave-auction", (auctionId) => {
-    if (!auctionId) return;
-    socket.leave(String(auctionId));
+    if (auctionId) socket.leave(auctionId);
   });
 
+  // Place Bid
   socket.on("place-bid", async ({ auctionId, amount }) => {
-  try {
-    const Auction = mongoose.model("Auction");
-    const parsedAmount = Number(amount);
-    const userId = socket.user?.id;
+    if (!userId) return;
 
-    if (!auctionId || !Number.isFinite(parsedAmount) || parsedAmount <= 0)
-      return socket.emit("error", "Invalid bid data");
-    if (!userId) return socket.emit("error", "Unauthorized");
+    try {
+      const auction = await Auction.findById(auctionId).populate(
+        "owner highestBidder",
+        "username"
+      );
+      if (!auction) return;
 
-    const auction = await Auction.findById(auctionId).populate("owner highestBidder bidHistory.userId", "username");
-    if (!auction) return socket.emit("error", "Auction not found");
+      if (auction.ended)
+        return socket.emit("bid-error", { message: "Auction has ended" });
+      if (amount <= (auction.currentBid ?? auction.basePrice ?? 0))
+        return socket.emit("bid-error", {
+          message: "Bid must be higher than current",
+        });
+      if (auction.owner._id.toString() === userId)
+        return socket.emit("bid-error", {
+          message: "Owner cannot bid on own auction",
+        });
 
-    const now = new Date();
-    if (auction.ended || now > auction.endAt) {
-      auction.ended = true;
-      await auction.save();
-      io.emit("auction-ended", {
-        auctionId: auction._id,
-        winner: auction.highestBidder?.username || null,
-        finalBid: auction.currentBid,
+      // Update auction
+      auction.currentBid = amount;
+      auction.highestBidder = userId;
+      auction.bidHistory.push({
+        userId,
+        bidderName: socket.user.username,
+        amount,
+        timestamp: new Date(),
       });
-      return;
+      await auction.save();
+
+      // Emit update to auction room
+      io.to(auctionId).emit("bid-updated", {
+        auctionId: auction._id,
+        currentBid: auction.currentBid,
+        highestBidderName: socket.user.username,
+        bidHistory: auction.bidHistory,
+      });
+    } catch (err) {
+      console.error("Bid error:", err);
+      socket.emit("bid-error", { message: "Error placing bid" });
     }
+  });
 
-    const current = auction.currentBid ?? auction.basePrice;
-    if (parsedAmount <= current) return socket.emit("error", "Bid too low");
-
-    // Update auction
-    auction.currentBid = parsedAmount;
-    auction.highestBidder = userId;
-    auction.bidHistory.push({ userId, amount: parsedAmount, timestamp: now });
-    await auction.save();
-
-    // Emit updated info to all
-    io.emit("bid-updated", {
-      auctionId: auction._id,
-      currentBid: auction.currentBid,
-      highestBidder: auction.highestBidder._id,
-      highestBidderName: socket.user.username,
-      bidHistory: auction.bidHistory.map((b) => ({
-        ...b._doc,
-        bidderName: b.userId?.username,
-      })),
-    });
-
-    // Notify previous highest bidder they got outbid
-    const previousHighest = auction.highestBidder;
-    io.to(String(auctionId)).emit("outbid", {
-      previousBidder: previousHighest?._id,
-      newBid: parsedAmount,
-      auctionId,
-    });
-
-    console.log(`💸 ${socket.user.username} → ₹${parsedAmount} on ${auctionId}`);
-  } catch (err) {
-    console.error("place-bid error:", err);
-    socket.emit("error", "Server error");
-  }
+  socket.on("disconnect", () => {
+    if (userId) onlineUsers.delete(userId);
+  });
 });
 
-  socket.on("disconnect", () =>
-    console.log("❌ Client disconnected:", socket.id)
-  );
-});
-
-// AUTO-END AUCTIONS
+// ------------------- AUTO-END AUCTIONS -------------------
 setInterval(async () => {
   try {
-    const Auction = mongoose.model("Auction");
     const now = new Date();
-    const toEnd = await Auction.find({
+    const endingAuctions = await Auction.find({
       ended: false,
       endAt: { $lte: now },
-    }).populate("highestBidder", "username");
+    }).populate("owner highestBidder", "username");
 
-    for (const auction of toEnd) {
-      auction.ended = true;
-      await auction.save();
+    for (const auction of endingAuctions) {
+      try {
+        auction.ended = true;
+        await auction.save();
 
-      io.emit("auction-ended", {
-        auctionId: auction._id,
-        winner: auction.highestBidder?.username || "No winner",
-        finalBid: auction.currentBid,
-      });
+        const ownerId = auction.owner?._id?.toString();
+        const winnerId = auction.highestBidder?._id?.toString();
 
-      console.log(
-        `🏁 Auction ended: ${auction._id} Winner: ${auction.highestBidder?.username}`
-      );
+        io.to(auction._id.toString()).emit("auction-ended", {
+          auctionId: auction._id,
+          winner: auction.highestBidder?.username || "No winner",
+          finalBid: auction.currentBid,
+        });
+
+        // Winner notification
+        if (winnerId) {
+          const winnerNotification = await Notification.create({
+            user: winnerId,
+            auction: auction._id,
+            type: "AUCTION_WINNER",
+            message: `🎉 You won "${auction.title}" for ₹${auction.currentBid}!`,
+          });
+          if (onlineUsers.has(winnerId)) {
+            io.to(onlineUsers.get(winnerId)).emit("notification", {
+              message: winnerNotification.message,
+            });
+          }
+        }
+
+        // Owner notification
+        if (ownerId) {
+          const ownerNotification = await Notification.create({
+            user: ownerId,
+            auction: auction._id,
+            type: "AUCTION_RESULT",
+            message: `🏁 Your auction "${auction.title}" ended. Winner: ${
+              auction.highestBidder?.username || "No one"
+            }`,
+          });
+          if (onlineUsers.has(ownerId)) {
+            io.to(onlineUsers.get(ownerId)).emit("notification", {
+              message: ownerNotification.message,
+            });
+          }
+        }
+      } catch (auctionErr) {
+        console.error("Error processing auction:", auction._id, auctionErr);
+      }
     }
   } catch (err) {
-    console.error("Auto-end error:", err);
+    console.error("Error ending auctions:", err);
   }
 }, 3000);
 
-// START SERVER
+// ------------------- START SERVER -------------------
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+httpServer.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
