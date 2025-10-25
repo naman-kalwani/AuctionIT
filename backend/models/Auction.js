@@ -7,52 +7,54 @@ const auctionSchema = new mongoose.Schema(
     description: String,
     image: String,
     basePrice: Number,
-    currentBid: Number,
-    highestBidder: String,
-    bids: [
+    currentBid: { type: Number, default: 0 },
+    highestBidder: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    highestBidderName: { type: String, default: "" }, // store name directly
+    bidHistory: [
       {
-        bidderName: String,
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        bidderName: { type: String, default: "" }, // store bidder name
         amount: Number,
-        at: { type: Date, default: Date.now },
+        timestamp: { type: Date, default: Date.now },
       },
     ],
     endAt: Date,
     ended: { type: Boolean, default: false },
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // NEW
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    ownerName: { type: String, default: "" }, // store owner name
   },
   { timestamps: true }
 );
 
 export default mongoose.model("Auction", auctionSchema);
 
-
-
-// // server/models/Auction.js
 // import mongoose from "mongoose";
 
-// const BidSchema = new mongoose.Schema(
+// const auctionSchema = new mongoose.Schema(
 //   {
-//     bidderName: { type: String, default: "Anonymous" },
-//     amount: { type: Number, required: true },
-//     at: { type: Date, default: Date.now },
-//   },
-//   { _id: false }
-// );
-
-// const AuctionSchema = new mongoose.Schema(
-//   {
-//     title: { type: String, required: true },
-//     category: { type: String, default: "other" },
-//     description: { type: String, default: "" },
-//     image: { type: String, default: "" },
-//     basePrice: { type: Number, default: 0 },
-//     currentBid: { type: Number, default: 0 },
-//     highestBidder: { type: String, default: "" },
-//     bids: { type: [BidSchema], default: [] },
-//     endAt: { type: Date, required: true },
+//     title: String,
+//     category: String,
+//     description: String,
+//     image: String,
+//     basePrice: Number,
+//     currentBid: Number,
+//     highestBidder: String,
+//     bids: [
+//       {
+//         bidderName: String,
+//         amount: Number,
+//         at: { type: Date, default: Date.now },
+//       },
+//     ],
+//     endAt: Date,
 //     ended: { type: Boolean, default: false },
+//     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // NEW
 //   },
 //   { timestamps: true }
 // );
 
-// export default mongoose.models.Auction || mongoose.model("Auction", AuctionSchema);
+// export default mongoose.model("Auction", auctionSchema);
