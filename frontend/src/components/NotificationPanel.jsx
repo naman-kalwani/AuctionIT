@@ -1,19 +1,20 @@
 export default function NotificationPanel({ notifications, onClose }) {
   return (
-    <div className="absolute right-4 top-10 w-80 bg-white shadow-lg rounded-xl border p-4 z-50">
+    <div className="w-80 right-5 bg-white shadow-lg rounded-xl border p-4">
       {/* Header */}
       <div className="flex justify-between items-center border-b pb-2 mb-3">
         <h2 className="text-lg font-semibold tracking-tight">Notifications</h2>
         <button
           onClick={onClose}
-          className="text-gray-500 hover:text-black transition-colors"
+          className="text-gray-500 hover:text-black transition-colors cursor-pointer"
+          aria-label="Close notifications"
         >
           ✖
         </button>
       </div>
 
       {/* Notification List */}
-      {notifications.length === 0 ? (
+      {!notifications || notifications.length === 0 ? (
         <p className="text-gray-400 text-sm text-center py-4">
           No notifications yet.
         </p>

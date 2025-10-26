@@ -68,16 +68,31 @@ export default function Home() {
   }, []);
 
   const filteredAuctions = (() => {
-    if (view === "all") return auctions;
-    if (!user) return auctions;
-    if (view === "mine") {
-      return auctions.filter((a) => a.owner?.username === user.username);
+    // "all" -> show only live auctions
+    if (view === "all") return auctions.filter((a) => !a.ended);
+
+    // "past" -> show last 20 ended auctions sorted by end date (most recent first)
+    if (view === "past") {
+      return auctions
+        .filter((a) => a.ended)
+        .sort((a, b) => new Date(b.endAt) - new Date(a.endAt))
+        .slice(0, 20);
     }
+
+    if (!user) return auctions.filter((a) => !a.ended);
+
+    if (view === "mine") {
+      return auctions.filter(
+        (a) => a.owner?.username === user.username 
+      );
+    }
+
     if (view === "bids") {
       return auctions.filter((a) =>
         a.bidHistory?.some((b) => b.bidderName === user.username)
       );
     }
+
     return auctions;
   })();
 
@@ -86,7 +101,7 @@ export default function Home() {
       {user && (
         <div className="flex justify-between mb-4">
           <div className="flex gap-3">
-            {["all", "mine", "bids"].map((tab) => (
+            {["all", "mine", "bids", "past"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setView(tab)}
@@ -97,10 +112,12 @@ export default function Home() {
                 }`}
               >
                 {tab === "all"
-                  ? "All Auctions"
+                  ? "Live Auctions"
                   : tab === "mine"
                   ? "My Auctions"
-                  : "My Bids"}
+                  : tab === "bids"
+                  ? "My Bids"
+                  : "Past Auctions"}
               </button>
             ))}
           </div>

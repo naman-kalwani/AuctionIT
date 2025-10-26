@@ -1,9 +1,13 @@
 import { useState, useMemo } from "react";
+import { useAuth } from "../context/useAuth";
+import BidHistory from "./BidHistory";
 
 export default function AuctionList({ auctions = [], onSelect }) {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [category, setCategory] = useState("All");
   const [previewSrc, setPreviewSrc] = useState(null);
+  const [previewBids, setPreviewBids] = useState(null);
 
   const categories = useMemo(() => {
     const cats = new Set(auctions.map((a) => a.category).filter(Boolean));
@@ -75,7 +79,6 @@ export default function AuctionList({ auctions = [], onSelect }) {
                   </span>
                 )}
 
-                {/* Image: fixed aspect container to avoid layout shifts for dynamic image sizes; use object-contain so the full image is visible */}
                 <div
                   className="w-full bg-gray-100 flex items-center justify-center overflow-hidden"
                   style={{ aspectRatio: "5/3", minHeight: "12rem" }}
@@ -100,7 +103,7 @@ export default function AuctionList({ auctions = [], onSelect }) {
                 </div>
 
                 {/* Content */}
-                <div className="p-4 flex flex-col gap-2">
+                <div className="p-4 flex flex-col gap-3">
                   <h3 className="text-lg font-semibold">{a.title}</h3>
 
                   <div className="flex justify-between text-gray-500 text-sm">
@@ -112,17 +115,46 @@ export default function AuctionList({ auctions = [], onSelect }) {
                     </span>
                   </div>
 
-                  <p className="text-gray-700 mt-2">
-                    {a.ended ? "Final Bid: " : "Current Bid: "}
-                    <span className="font-bold text-gray-900">
-                      ₹{(a.currentBid ?? a.basePrice).toLocaleString("en-IN")}
-                    </span>
-                  </p>
+                  <div className="flex items-center justify-between mt-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        {a.ended ? "Final Bid" : "Current Bid"}
+                      </p>
+                      <p className="text-2xl font-bold">
+                        ₹{(a.currentBid ?? a.basePrice).toLocaleString("en-IN")}
+                      </p>
+                    </div>
 
-                  {/* Join or Ended */}
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Highest Bidder</p>
+                      <p className="font-medium">
+                        {a.highestBidderName || "No bids yet"}
+                      </p>
+                    </div>
+                  </div>
+
                   {a.ended ? (
-                    <div className="mt-3 w-full py-2 text-center bg-red-500 text-white rounded text-sm">
-                      SOLD
+                    <div className="mt-3 flex gap-3 items-center">
+                      <div
+                        className="flex-1 flex items-center justify-center py-2 px-3 rounded-full text-white text-sm font-semibold"
+                        style={{
+                          background: "linear-gradient(90deg,#ef4444,#dc2626)",
+                        }}
+                      >
+                        SOLD
+                      </div>
+                      {/* If the current user is the owner, allow viewing bid history */}
+                      {user &&
+                        (a.owner?.username
+                          ? a.owner.username === user.username
+                          : a.owner === user.id) && (
+                          <button
+                            onClick={() => setPreviewBids(a)}
+                            className="px-3 py-2 bg-white border border-blue-200 text-blue-700 rounded text-sm hover:bg-blue-50 shadow-sm"
+                          >
+                            View Bids
+                          </button>
+                        )}
                     </div>
                   ) : (
                     <button
@@ -169,6 +201,22 @@ export default function AuctionList({ auctions = [], onSelect }) {
             />
           </div>
         </div>
+      )}
+
+      {/* Bid history modal for owners */}
+      {previewBids && (
+        <>
+          {/* lazy import-like local component use */}
+          {/** Reusable BidHistory component handles modal rendering when onClose is passed */}
+          <BidHistory
+            bids={previewBids.bidHistory}
+            title={`Bid History — ${previewBids.title}`}
+            currentBid={previewBids.currentBid}
+            basePrice={previewBids.basePrice}
+            ended={previewBids.ended}
+            onClose={() => setPreviewBids(null)}
+          />
+        </>
       )}
     </>
   );
