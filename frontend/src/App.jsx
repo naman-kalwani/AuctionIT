@@ -6,6 +6,7 @@ import { useAuth } from "./context/useAuth";
 import AuctionList from "./components/AuctionList";
 import AuctionRoom from "./components/AuctionRoom";
 import CreateAuction from "./components/CreateAuction";
+import NotificationPanel from "./components/NotificationPanel";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
@@ -17,6 +18,7 @@ export default function App() {
   const [showCreate, setShowCreate] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [view, setView] = useState("all");
   const dingSound = useRef(null);
 
   useEffect(() => {
@@ -24,7 +26,6 @@ export default function App() {
     dingSound.current.volume = 0.6;
   }, []);
 
-  // Load auctions from backend
   const loadAuctions = useCallback(async () => {
     try {
       const { data } = await api.get("/api/auctions");
@@ -44,7 +45,6 @@ export default function App() {
     }
   }, []);
 
-  // Load notifications from backend
   const loadNotifications = useCallback(async () => {
     if (!user) return;
     try {
@@ -57,64 +57,59 @@ export default function App() {
     }
   }, [user]);
 
-  // Socket setup & live updates
   useEffect(() => {
+    loadAuctions();
     if (!user) return;
 
-    loadAuctions();
     loadNotifications();
-
     socket.auth = { token: user.token };
     if (!socket.connected) socket.connect();
 
-    // Auction events
-    const onAuctionCreated = (newAuction) => {
-      setAuctions((prev) => [newAuction, ...prev]);
-    };
-
+    const onAuctionCreated = (a) => setAuctions((prev) => [a, ...prev]);
     const onBidUpdated = (data) => {
       setAuctions((prev) =>
         prev.map((a) =>
-          a._id === data.auctionId
+          String(a._id) === String(data.auctionId)
             ? {
                 ...a,
                 currentBid: data.currentBid,
                 highestBidderName: data.highestBidderName,
-                bidHistory: data.bidHistory || a.bidHistory,
+                bidHistory: data.bidHistory,
               }
             : a
         )
       );
-
-      // Also update selectedAuction if the user is inside that room
-      if (selectedAuction?._id === data.auctionId) {
+      if (
+        selectedAuction &&
+        String(selectedAuction._id) === String(data.auctionId)
+      ) {
         setSelectedAuction((prev) => ({
           ...prev,
           currentBid: data.currentBid,
           highestBidderName: data.highestBidderName,
-          bidHistory: data.bidHistory || prev.bidHistory,
+          bidHistory: data.bidHistory,
         }));
       }
     };
-
     const onAuctionEnded = (data) => {
       setAuctions((prev) =>
         prev.map((a) =>
-          a._id === data.auctionId
-            ? { ...a, ended: true, currentBid: data.finalBid ?? a.currentBid }
+          String(a._id) === String(data.auctionId)
+            ? { ...a, ended: true, currentBid: data.finalBid }
             : a
         )
       );
-
-      if (selectedAuction?._id === data.auctionId) {
+      if (
+        selectedAuction &&
+        String(selectedAuction._id) === String(data.auctionId)
+      ) {
         setSelectedAuction((prev) => ({
           ...prev,
           ended: true,
-          currentBid: data.finalBid ?? prev.currentBid,
+          currentBid: data.finalBid,
         }));
       }
     };
-
     const onNotification = (n) => {
       dingSound.current?.play();
       setNotifications((prev) => [n, ...prev]);
@@ -134,101 +129,202 @@ export default function App() {
   }, [user, loadAuctions, loadNotifications, selectedAuction]);
 
   const unread = notifications.length;
-
-  if (!user && page === "login")
-    return (
-      <Login
-        onSwitch={() => setPage("signup")}
-        onLoginSuccess={() => setPage("home")}
-      />
-    );
-  if (!user && page === "signup")
-    return (
-      <Signup
-        onSwitch={() => setPage("login")}
-        onSignupSuccess={() => setPage("home")}
-      />
-    );
-
   const currentAuction = selectedAuction
-    ? auctions.find((a) => a._id === selectedAuction._id) || selectedAuction
+    ? auctions.find((a) => String(a._id) === String(selectedAuction._id)) ||
+      selectedAuction
     : null;
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      {/* Navbar */}
-      <div className="flex justify-between items-center mb-4 relative">
-        <h1 className="font-bold text-xl">Welcome, {user?.username}</h1>
+  // ✅ Filtering logic — by USERNAME (as you wanted)
+  const filteredAuctions = (() => {
+    if (view === "all") return auctions;
+    if (!user) return auctions;
 
-        <div
-          className="relative mr-4 cursor-pointer"
-          onClick={() => setShowDropdown(!showDropdown)}
+    if (view === "mine") {
+      return auctions.filter((a) => {
+        const ownerName =
+          a.owner?.username ||
+          a.owner?.name ||
+          (typeof a.owner === "string" ? a.owner : "");
+        return ownerName === user.username;
+      });
+    }
+
+    if (view === "bids") {
+      return auctions.filter((a) =>
+        Array.isArray(a.bidHistory)
+          ? a.bidHistory.some(
+              (b) => b.bidderName && b.bidderName === user.username
+            )
+          : false
+      );
+    }
+
+    return auctions;
+  })();
+
+  return (
+    <div className="min-h-screen bg-[#f5f7fa] text-gray-800">
+      {/* NAVBAR */}
+      <header className="flex justify-between items-center px-6 py-4 bg-white shadow-sm relative">
+        <h1
+          onClick={() => {
+            setSelectedAuction(null);
+            setShowCreate(false);
+            setView("all");
+            setPage("home");
+          }}
+          className="text-2xl font-semibold tracking-tight cursor-pointer"
         >
-          <span className="text-2xl">🔔</span>
-          {unread > 0 && (
-            <span className="absolute -top-1 -right-2 bg-red-600 text-white text-xs px-1 rounded-full">
-              {unread}
-            </span>
+          AuctionIT💸
+        </h1>
+
+        <div className="flex items-center gap-6">
+          {user ? (
+            <>
+              {/* Notifications */}
+              <div
+                className="relative cursor-pointer"
+                onClick={() => setShowDropdown((prev) => !prev)}
+              >
+                <span className="text-2xl">🔔</span>
+                {unread > 0 && (
+                  <span className="absolute -top-1 -right-2 bg-red-600 text-white text-xs px-1 rounded-full">
+                    {unread}
+                  </span>
+                )}
+              </div>
+
+              <span className="font-medium">{user.username} 👤</span>
+              <button
+                onClick={() => logout() && setPage("home")}
+                className="px-3 py-1 bg-gray-800 text-white rounded hover:bg-black cursor-pointer"
+              >
+                Logout
+              </button>
+            </>
+          ) : page === "home" ? (
+            <button
+              onClick={() => setPage("login")}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
+            >
+              Login
+            </button>
+          ) : (
+            <button
+              onClick={() => setPage("home")}
+              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
+            >
+              View Auctions
+            </button>
           )}
         </div>
 
-        {showDropdown && (
-          <div className="absolute right-12 top-10 bg-white border shadow-md w-64 rounded max-h-64 overflow-y-auto z-50">
-            {notifications.length === 0 ? (
-              <p className="p-3 text-gray-500 text-center">No Notifications</p>
-            ) : (
-              notifications.map((n, i) => (
-                <div
-                  key={i}
-                  className="p-3 border-b last:border-0 hover:bg-gray-100"
-                >
-                  <p className="font-medium">{n.message}</p>
-                </div>
-              ))
-            )}
+        {/* Notification Panel */}
+        {user && (
+          <div
+            className={`absolute top-12 right-0 z-50 w-80 transition-transform duration-300 ${
+              showDropdown
+                ? "translate-y-0 opacity-100"
+                : "-translate-y-10 opacity-0 pointer-events-none"
+            }`}
+          >
+            <NotificationPanel
+              notifications={notifications}
+              onClose={() => setShowDropdown(false)}
+            />
           </div>
         )}
+      </header>
 
-        <button
-          onClick={() => logout()}
-          className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-        >
-          Logout
-        </button>
-      </div>
+      {/* MAIN CONTENT */}
+      <main className="max-w-5xl mx-auto py-6">
+        {!user && page === "login" && (
+          <Login
+            onSwitch={() => setPage("signup")}
+            onLoginSuccess={() => setPage("home")}
+          />
+        )}
+        {!user && page === "signup" && (
+          <Signup
+            onSwitch={() => setPage("login")}
+            onSignupSuccess={() => setPage("home")}
+          />
+        )}
 
-      {!currentAuction && !showCreate && (
-        <>
-          <div className="flex justify-center mb-4">
-            <button
-              onClick={() => setShowCreate(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              + Create Auction
-            </button>
-          </div>
-          <AuctionList auctions={auctions} onSelect={setSelectedAuction} />
-        </>
-      )}
+        {page === "home" && !currentAuction && !showCreate && (
+          <>
+            {user && (
+              <div className="flex justify-between mb-4">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setView("all")}
+                    className={`px-3 py-1 rounded ${
+                      view === "all"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white border"
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setView("mine")}
+                    className={`px-3 py-1 rounded ${
+                      view === "mine"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white border"
+                    }`}
+                  >
+                    My Auctions
+                  </button>
+                  <button
+                    onClick={() => setView("bids")}
+                    className={`px-3 py-1 rounded ${
+                      view === "bids"
+                        ? "bg-blue-600 text-white"
+                        : "bg-white border"
+                    }`}
+                  >
+                    My Bids
+                  </button>
+                </div>
 
-      {showCreate && (
-        <CreateAuction
-          onCreated={(created) => {
-            setShowCreate(false);
-            loadAuctions();
-            setSelectedAuction(created);
-          }}
-          onBack={() => setShowCreate(false)}
-        />
-      )}
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow"
+                >
+                  + Create Auction
+                </button>
+              </div>
+            )}
 
-      {currentAuction && (
-        <AuctionRoom
-          auction={currentAuction}
-          currentUser={user}
-          onBack={() => setSelectedAuction(null)}
-        />
-      )}
+            <AuctionList
+              auctions={filteredAuctions}
+              onSelect={(a) =>
+                user ? setSelectedAuction(a) : setPage("login")
+              }
+            />
+          </>
+        )}
+
+        {showCreate && user && (
+          <CreateAuction
+            onCreated={(created) => {
+              setShowCreate(false);
+              loadAuctions();
+              setSelectedAuction(created);
+            }}
+            onBack={() => setShowCreate(false)}
+          />
+        )}
+
+        {currentAuction && user && (
+          <AuctionRoom
+            auction={currentAuction}
+            currentUser={user}
+            onBack={() => setSelectedAuction(null)}
+          />
+        )}
+      </main>
     </div>
   );
 }

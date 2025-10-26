@@ -1,23 +1,33 @@
 export default function NotificationPanel({ notifications, onClose }) {
   return (
-    <div className="absolute right-4 top-14 w-80 bg-white shadow-xl rounded-lg border p-3 z-50">
-      <div className="flex justify-between items-center border-b pb-2 mb-2">
-        <h2 className="text-lg font-semibold">Notifications</h2>
-        <button onClick={onClose} className="text-gray-600 hover:text-black">
+    <div className="absolute right-4 top-10 w-80 bg-white shadow-lg rounded-xl border p-4 z-50">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b pb-2 mb-3">
+        <h2 className="text-lg font-semibold tracking-tight">Notifications</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-500 hover:text-black transition-colors"
+        >
           ✖
         </button>
       </div>
 
+      {/* Notification List */}
       {notifications.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center">
+        <p className="text-gray-400 text-sm text-center py-4">
           No notifications yet.
         </p>
       ) : (
-        notifications.map((n, i) => (
-          <div key={i} className="p-2 mb-2 rounded bg-gray-100 text-sm">
-            {n.message}
-          </div>
-        ))
+        <div className="flex flex-col gap-2 max-h-64 overflow-y-auto">
+          {notifications.map((n, i) => (
+            <div
+              key={i}
+              className="p-2 rounded-lg bg-gray-100 text-sm hover:bg-gray-200 transition cursor-pointer"
+            >
+              {n.message}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

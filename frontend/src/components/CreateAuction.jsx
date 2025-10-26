@@ -1,5 +1,5 @@
 // src/components/CreateAuction.jsx
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { api } from "../api";
 import { useAuth } from "../context/useAuth";
 
@@ -7,14 +7,16 @@ export default function CreateAuction({ onCreated, onBack }) {
   const { user } = useAuth();
   const [form, setForm] = useState({
     title: "",
-    category: "Electronics",
+    category: "Other",
     description: "",
     basePrice: "",
     durationMinutes: 10,
     imageFile: null,
   });
+  const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const fileInputRef = useRef(null);
 
   const categories = [
     "Furniture & Essentials",
@@ -26,8 +28,24 @@ export default function CreateAuction({ onCreated, onBack }) {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    setForm((prev) => ({ ...prev, [name]: files ? files[0] : value }));
+    if (name === "imageFile" && files?.[0]) {
+      setForm((prev) => ({ ...prev, imageFile: files[0] }));
+      setPreview(URL.createObjectURL(files[0]));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      setForm((prev) => ({ ...prev, imageFile: file }));
+      setPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleDragOver = (e) => e.preventDefault();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,6 +69,7 @@ export default function CreateAuction({ onCreated, onBack }) {
         durationMinutes: 10,
         imageFile: null,
       });
+      setPreview(null);
       onCreated && onCreated(res.data);
     } catch (err) {
       console.error(err);
@@ -70,6 +89,33 @@ export default function CreateAuction({ onCreated, onBack }) {
       )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        {/* Drag & Drop Image Upload */}
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onClick={() => fileInputRef.current.click()}
+          className="border-dashed border-2 border-gray-400 rounded p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition relative"
+        >
+          {preview ? (
+            <img
+              src={preview}
+              alt="Preview"
+              className="max-h-48 object-contain"
+            />
+          ) : (
+            <p className="text-gray-500 text-center">
+              Drag & drop image here, or click to select
+            </p>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            name="imageFile"
+            accept="image/*"
+            onChange={handleChange}
+            className="hidden"
+          />
+        </div>
         <input
           name="title"
           value={form.title}
@@ -112,13 +158,6 @@ export default function CreateAuction({ onCreated, onBack }) {
           value={form.durationMinutes}
           onChange={handleChange}
           placeholder="Duration (minutes)"
-          className="border rounded px-3 py-2"
-        />
-        <input
-          name="imageFile"
-          type="file"
-          accept="image/*"
-          onChange={handleChange}
           className="border rounded px-3 py-2"
         />
 
