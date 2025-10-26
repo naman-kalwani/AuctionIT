@@ -1,9 +1,11 @@
 // src/pages/Login.jsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 
-export default function Login({ onSwitch, onLoginSuccess }) {
+export default function Login() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
@@ -38,7 +40,7 @@ export default function Login({ onSwitch, onLoginSuccess }) {
     try {
       await login(email, password);
       setMsg("✅ Logged in successfully!");
-      onLoginSuccess && onLoginSuccess();
+      navigate("/");
     } catch (err) {
       console.error(err);
       setMsg("❌ Invalid login credentials.");
@@ -125,7 +127,7 @@ export default function Login({ onSwitch, onLoginSuccess }) {
         <p className="text-center text-sm text-gray-600">
           New user?{" "}
           <span
-            onClick={onSwitch}
+            onClick={() => navigate("/signup")}
             className="text-green-600 cursor-pointer hover:underline"
           >
             Create Account

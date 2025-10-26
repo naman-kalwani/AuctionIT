@@ -1,48 +1,114 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Routes, Route, useNavigate, useParams } from "react-router-dom";
 import { socket } from "./socket";
 import { api } from "./api";
 import { useAuth } from "./context/useAuth";
-
-import AuctionList from "./components/AuctionList";
-import AuctionRoom from "./components/AuctionRoom";
-import CreateAuction from "./components/CreateAuction";
+// Auction list moved into Home page
 import NotificationPanel from "./components/NotificationPanel";
+import ProtectedRoute from "./components/ProtectedRoute";
+import AuctionRoom from "./pages/AuctionRoom";
+import CreateAuction from "./pages/CreateAuction";
+import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 
+function AuctionRoomPage() {
+  const { id } = useParams();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [auction, setAuction] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAuction = useCallback(async () => {
+    try {
+      const { data } = await api.get(`/api/auctions/${id}`);
+      setAuction({
+        ...data,
+        highestBidderName: data.highestBidder?.username || null,
+        bidHistory:
+          data.bidHistory?.map((b) => ({
+            ...b,
+            bidderName: b.userId?.username || "Unknown",
+          })) || [],
+      });
+    } catch (err) {
+      console.error("fetch auction error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchAuction();
+  }, [fetchAuction]);
+
+  // SOCKET REAL-TIME UPDATES
+  useEffect(() => {
+    if (!auction || !user) return;
+    socket.auth = { token: user.token };
+    if (!socket.connected) socket.connect();
+
+    const onBidUpdated = (data) => {
+      if (String(auction._id) === String(data.auctionId)) {
+        setAuction((prev) => ({
+          ...prev,
+          currentBid: data.currentBid,
+          highestBidderName: data.highestBidderName,
+          bidHistory: data.bidHistory,
+        }));
+      }
+    };
+
+    const onAuctionEnded = (data) => {
+      if (String(auction._id) === String(data.auctionId)) {
+        setAuction((prev) => ({
+          ...prev,
+          ended: true,
+          currentBid: data.finalBid,
+        }));
+      }
+    };
+
+    socket.on("bid-updated", onBidUpdated);
+    socket.on("auction-ended", onAuctionEnded);
+    return () => {
+      socket.off("bid-updated", onBidUpdated);
+      socket.off("auction-ended", onAuctionEnded);
+    };
+  }, [auction, user]);
+
+  if (loading) return <div className="text-center py-8">Loading...</div>;
+  if (!auction)
+    return <div className="text-center py-8">Auction not found</div>;
+  return (
+    <AuctionRoom
+      auction={auction}
+      currentUser={user}
+      onBack={() => navigate("/")}
+    />
+  );
+}
+
+function CreateAuctionPage() {
+  const navigate = useNavigate();
+  return (
+    <CreateAuction
+      onCreated={(created) => navigate(`/auction/${created._id}`)}
+      onBack={() => navigate("/")}
+    />
+  );
+}
+
 export default function App() {
   const { user, logout } = useAuth();
-  const [page, setPage] = useState(user ? "home" : "login");
-  const [auctions, setAuctions] = useState([]);
-  const [selectedAuction, setSelectedAuction] = useState(null);
-  const [showCreate, setShowCreate] = useState(false);
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [view, setView] = useState("all");
   const dingSound = useRef(null);
 
   useEffect(() => {
     dingSound.current = new Audio("/sounds/ding.mp3");
     dingSound.current.volume = 0.6;
-  }, []);
-
-  const loadAuctions = useCallback(async () => {
-    try {
-      const { data } = await api.get("/api/auctions");
-      setAuctions(
-        data.map((a) => ({
-          ...a,
-          highestBidderName: a.highestBidder?.username || null,
-          bidHistory:
-            a.bidHistory?.map((b) => ({
-              ...b,
-              bidderName: b.userId?.username || "Unknown",
-            })) || [],
-        }))
-      );
-    } catch (err) {
-      console.error("fetch auctions error:", err);
-    }
   }, []);
 
   const loadNotifications = useCallback(async () => {
@@ -58,130 +124,38 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    loadAuctions();
     if (!user) return;
-
     loadNotifications();
     socket.auth = { token: user.token };
     if (!socket.connected) socket.connect();
 
-    const onAuctionCreated = (a) => setAuctions((prev) => [a, ...prev]);
-    const onBidUpdated = (data) => {
-      setAuctions((prev) =>
-        prev.map((a) =>
-          String(a._id) === String(data.auctionId)
-            ? {
-                ...a,
-                currentBid: data.currentBid,
-                highestBidderName: data.highestBidderName,
-                bidHistory: data.bidHistory,
-              }
-            : a
-        )
-      );
-      if (
-        selectedAuction &&
-        String(selectedAuction._id) === String(data.auctionId)
-      ) {
-        setSelectedAuction((prev) => ({
-          ...prev,
-          currentBid: data.currentBid,
-          highestBidderName: data.highestBidderName,
-          bidHistory: data.bidHistory,
-        }));
-      }
-    };
-    const onAuctionEnded = (data) => {
-      setAuctions((prev) =>
-        prev.map((a) =>
-          String(a._id) === String(data.auctionId)
-            ? { ...a, ended: true, currentBid: data.finalBid }
-            : a
-        )
-      );
-      if (
-        selectedAuction &&
-        String(selectedAuction._id) === String(data.auctionId)
-      ) {
-        setSelectedAuction((prev) => ({
-          ...prev,
-          ended: true,
-          currentBid: data.finalBid,
-        }));
-      }
-    };
     const onNotification = (n) => {
       dingSound.current?.play();
       setNotifications((prev) => [n, ...prev]);
     };
 
-    socket.on("auction-created", onAuctionCreated);
-    socket.on("bid-updated", onBidUpdated);
-    socket.on("auction-ended", onAuctionEnded);
     socket.on("notification", onNotification);
-
-    return () => {
-      socket.off("auction-created", onAuctionCreated);
-      socket.off("bid-updated", onBidUpdated);
-      socket.off("auction-ended", onAuctionEnded);
-      socket.off("notification", onNotification);
-    };
-  }, [user, loadAuctions, loadNotifications, selectedAuction]);
+    return () => socket.off("notification", onNotification);
+  }, [user, loadNotifications]);
 
   const unread = notifications.length;
-  const currentAuction = selectedAuction
-    ? auctions.find((a) => String(a._id) === String(selectedAuction._id)) ||
-      selectedAuction
-    : null;
-
-  // ✅ Filtering logic — by USERNAME (as you wanted)
-  const filteredAuctions = (() => {
-    if (view === "all") return auctions;
-    if (!user) return auctions;
-
-    if (view === "mine") {
-      return auctions.filter((a) => {
-        const ownerName =
-          a.owner?.username ||
-          a.owner?.name ||
-          (typeof a.owner === "string" ? a.owner : "");
-        return ownerName === user.username;
-      });
-    }
-
-    if (view === "bids") {
-      return auctions.filter((a) =>
-        Array.isArray(a.bidHistory)
-          ? a.bidHistory.some(
-              (b) => b.bidderName && b.bidderName === user.username
-            )
-          : false
-      );
-    }
-
-    return auctions;
-  })();
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen bg-[#f5f7fa] text-gray-800">
-      {/* NAVBAR */}
       <header className="flex justify-between items-center px-6 py-4 bg-white shadow-sm relative">
         <h1
-          onClick={() => {
-            setSelectedAuction(null);
-            setShowCreate(false);
-            setView("all");
-            setPage("home");
-          }}
+          onClick={() => navigate("/")}
           className="text-2xl font-semibold tracking-tight cursor-pointer"
         >
           AuctionIT💸
         </h1>
-
         <div className="flex items-center gap-6">
           {user ? (
             <>
-              {/* Notifications */}
               <div
                 className="relative cursor-pointer"
                 onClick={() => setShowDropdown((prev) => !prev)}
@@ -193,33 +167,23 @@ export default function App() {
                   </span>
                 )}
               </div>
-
               <span className="font-medium">{user.username} 👤</span>
               <button
-                onClick={() => logout() && setPage("home")}
+                onClick={handleLogout}
                 className="px-3 py-1 bg-gray-800 text-white rounded hover:bg-black cursor-pointer"
               >
                 Logout
               </button>
             </>
-          ) : page === "home" ? (
+          ) : (
             <button
-              onClick={() => setPage("login")}
+              onClick={() => navigate("/login")}
               className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
             >
               Login
             </button>
-          ) : (
-            <button
-              onClick={() => setPage("home")}
-              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 cursor-pointer"
-            >
-              View Auctions
-            </button>
           )}
         </div>
-
-        {/* Notification Panel */}
         {user && (
           <div
             className={`absolute top-12 right-0 z-50 w-80 transition-transform duration-300 ${
@@ -235,95 +199,28 @@ export default function App() {
           </div>
         )}
       </header>
-
-      {/* MAIN CONTENT */}
       <main className="max-w-5xl mx-auto py-6">
-        {!user && page === "login" && (
-          <Login
-            onSwitch={() => setPage("signup")}
-            onLoginSuccess={() => setPage("home")}
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/create"
+            element={
+              <ProtectedRoute>
+                <CreateAuctionPage />
+              </ProtectedRoute>
+            }
           />
-        )}
-        {!user && page === "signup" && (
-          <Signup
-            onSwitch={() => setPage("login")}
-            onSignupSuccess={() => setPage("home")}
+          <Route
+            path="/auction/:id"
+            element={
+              <ProtectedRoute>
+                <AuctionRoomPage />
+              </ProtectedRoute>
+            }
           />
-        )}
-
-        {page === "home" && !currentAuction && !showCreate && (
-          <>
-            {user && (
-              <div className="flex justify-between mb-4">
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setView("all")}
-                    className={`px-3 py-1 rounded ${
-                      view === "all"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white border"
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setView("mine")}
-                    className={`px-3 py-1 rounded ${
-                      view === "mine"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white border"
-                    }`}
-                  >
-                    My Auctions
-                  </button>
-                  <button
-                    onClick={() => setView("bids")}
-                    className={`px-3 py-1 rounded ${
-                      view === "bids"
-                        ? "bg-blue-600 text-white"
-                        : "bg-white border"
-                    }`}
-                  >
-                    My Bids
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => setShowCreate(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow"
-                >
-                  + Create Auction
-                </button>
-              </div>
-            )}
-
-            <AuctionList
-              auctions={filteredAuctions}
-              onSelect={(a) =>
-                user ? setSelectedAuction(a) : setPage("login")
-              }
-            />
-          </>
-        )}
-
-        {showCreate && user && (
-          <CreateAuction
-            onCreated={(created) => {
-              setShowCreate(false);
-              loadAuctions();
-              setSelectedAuction(created);
-            }}
-            onBack={() => setShowCreate(false)}
-          />
-        )}
-
-        {currentAuction && user && (
-          <AuctionRoom
-            auction={currentAuction}
-            currentUser={user}
-            onBack={() => setSelectedAuction(null)}
-          />
-        )}
+        </Routes>
       </main>
     </div>
   );

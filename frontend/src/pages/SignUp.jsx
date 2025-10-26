@@ -1,9 +1,11 @@
 // src/pages/Signup.jsx
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 
-export default function Signup({ onSwitch, onSignupSuccess }) {
+export default function Signup() {
   const { signup } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -48,7 +50,7 @@ export default function Signup({ onSwitch, onSignupSuccess }) {
     try {
       await signup(username, email, password);
       setMsg("✅ Account created successfully!");
-      onSignupSuccess && onSignupSuccess();
+      navigate("/");
     } catch (err) {
       console.error(err);
       setMsg("❌ Signup failed. Try again.");
@@ -156,7 +158,7 @@ export default function Signup({ onSwitch, onSignupSuccess }) {
         <p className="text-center text-sm text-gray-600">
           Already have an account?{" "}
           <span
-            onClick={onSwitch}
+            onClick={() => navigate("/login")}
             className="text-blue-600 cursor-pointer hover:underline"
           >
             Login
