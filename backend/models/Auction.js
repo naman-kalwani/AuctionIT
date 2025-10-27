@@ -24,6 +24,7 @@ const auctionSchema = new mongoose.Schema(
     ],
     endAt: Date,
     ended: { type: Boolean, default: false },
+    warningNotificationSent: { type: Boolean, default: false },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     ownerName: { type: String, default: "" }, // store owner name
   },

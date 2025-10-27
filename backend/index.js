@@ -106,6 +106,11 @@ io.on("connection", (socket) => {
           message: "Owner cannot bid on own auction",
         });
 
+      // Store previous highest bidder before update
+      const previousHighestBidder = auction.highestBidder
+        ? auction.highestBidder._id.toString()
+        : null;
+
       // Update auction
       auction.currentBid = amount;
       auction.highestBidder = userId;
@@ -123,6 +128,53 @@ io.on("connection", (socket) => {
         currentBid: auction.currentBid,
         highestBidderName: socket.user.username,
         bidHistory: auction.bidHistory,
+      });
+
+      // === NOTIFICATIONS ===
+
+      // 1. Notify auction owner about new bid
+      const ownerId = auction.owner._id.toString();
+      if (ownerId !== userId) {
+        const ownerNotification = await Notification.create({
+          user: ownerId,
+          auction: auction._id,
+          type: "BID_PLACED",
+          message: `💰 New bid of ₹${amount} on "${auction.title}" by ${socket.user.username}`,
+        });
+        if (onlineUsers.has(ownerId)) {
+          io.to(onlineUsers.get(ownerId)).emit("notification", {
+            message: ownerNotification.message,
+            type: ownerNotification.type,
+          });
+        }
+      }
+
+      // 2. Notify previous highest bidder they were outbid
+      if (previousHighestBidder && previousHighestBidder !== userId) {
+        const outbidNotification = await Notification.create({
+          user: previousHighestBidder,
+          auction: auction._id,
+          type: "OUTBID",
+          message: `😞 You were outbid on "${auction.title}". New bid: ₹${amount}`,
+        });
+        if (onlineUsers.has(previousHighestBidder)) {
+          io.to(onlineUsers.get(previousHighestBidder)).emit("notification", {
+            message: outbidNotification.message,
+            type: outbidNotification.type,
+          });
+        }
+      }
+
+      // 3. Notify bidder their bid was successful
+      const bidderNotification = await Notification.create({
+        user: userId,
+        auction: auction._id,
+        type: "NEW_BID_SUCCESS",
+        message: `✅ Your bid of ₹${amount} on "${auction.title}" was placed successfully`,
+      });
+      socket.emit("notification", {
+        message: bidderNotification.message,
+        type: bidderNotification.type,
       });
     } catch (err) {
       console.error("Bid error:", err);
@@ -169,6 +221,7 @@ setInterval(async () => {
           if (onlineUsers.has(winnerId)) {
             io.to(onlineUsers.get(winnerId)).emit("notification", {
               message: winnerNotification.message,
+              type: winnerNotification.type,
             });
           }
         }
@@ -186,6 +239,7 @@ setInterval(async () => {
           if (onlineUsers.has(ownerId)) {
             io.to(onlineUsers.get(ownerId)).emit("notification", {
               message: ownerNotification.message,
+              type: ownerNotification.type,
             });
           }
         }
@@ -197,6 +251,67 @@ setInterval(async () => {
     console.error("Error ending auctions:", err);
   }
 }, 3000);
+
+// ------------------- CHECK AUCTIONS ENDING SOON -------------------
+setInterval(async () => {
+  try {
+    const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
+    const fourMinutesFromNow = new Date(Date.now() + 4 * 60 * 1000);
+
+    const endingSoon = await Auction.find({
+      ended: false,
+      endAt: { $gte: fourMinutesFromNow, $lte: fiveMinutesFromNow },
+      warningNotificationSent: { $ne: true },
+    }).populate("owner highestBidder", "username");
+
+    for (const auction of endingSoon) {
+      try {
+        const ownerId = auction.owner?._id?.toString();
+        const bidderId = auction.highestBidder?._id?.toString();
+
+        // Notify owner
+        if (ownerId) {
+          const ownerNotif = await Notification.create({
+            user: ownerId,
+            auction: auction._id,
+            type: "AUCTION_ENDING_SOON",
+            message: `⏰ Your auction "${auction.title}" ends in 5 minutes!`,
+          });
+          if (onlineUsers.has(ownerId)) {
+            io.to(onlineUsers.get(ownerId)).emit("notification", {
+              message: ownerNotif.message,
+              type: ownerNotif.type,
+            });
+          }
+        }
+
+        // Notify highest bidder
+        if (bidderId) {
+          const bidderNotif = await Notification.create({
+            user: bidderId,
+            auction: auction._id,
+            type: "AUCTION_ENDING_SOON",
+            message: `⏰ Auction "${auction.title}" ends in 5 minutes! You're winning at ₹${auction.currentBid}`,
+          });
+          if (onlineUsers.has(bidderId)) {
+            io.to(onlineUsers.get(bidderId)).emit("notification", {
+              message: bidderNotif.message,
+              type: bidderNotif.type,
+            });
+          }
+        }
+
+        // Mark as warned
+        auction.warningNotificationSent = true;
+        await auction.save();
+      } catch (err) {
+        console.error("Error notifying ending auction:", auction._id, err);
+      }
+    }
+  } catch (err) {
+    console.error("Error checking ending auctions:", err);
+  }
+}, 60000); // Check every minute
 
 // ------------------- START SERVER -------------------
 const PORT = process.env.PORT || 5000;
