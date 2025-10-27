@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { socket } from "../socket";
 import BidHistory from "../components/BidHistory";
 
@@ -8,7 +8,9 @@ export default function AuctionRoom({
   onBack,
 }) {
   const [auction, setAuction] = useState(initialAuction);
-  const [bidAmount, setBidAmount] = useState("");
+  const [bidAmount, setBidAmount] = useState(
+    initialAuction.currentBid ?? initialAuction.basePrice ?? 0
+  );
   const [message, setMessage] = useState("");
   const [timeLeft, setTimeLeft] = useState("");
   const [highlight, setHighlight] = useState(false);
@@ -17,6 +19,7 @@ export default function AuctionRoom({
   const isOwner = auction.owner?.username
     ? auction.owner.username === currentUser?.username
     : auction.owner === currentUser?.id;
+
   const canBid = !auction.ended && !isOwner;
   const showBidHistory = isOwner && auction.bidHistory?.length > 0;
 
@@ -26,60 +29,67 @@ export default function AuctionRoom({
     setAuction(initialAuction);
     socket.emit("join-auction", initialAuction._id);
 
-    const onBidUpdated = (data) => {
-      if (data.auctionId === initialAuction._id) {
-        setAuction((prev) => ({
+    const handleBidUpdated = (data) => {
+      if (data.auctionId !== initialAuction._id) return;
+
+      setAuction((prev) => {
+        if (data.currentBid > (prev.currentBid ?? prev.basePrice ?? 0))
+          setHighlight(true);
+        return {
           ...prev,
           currentBid: data.currentBid,
           highestBidderName: data.highestBidderName,
           bidHistory: data.bidHistory || prev.bidHistory,
-        }));
-        setHighlight(true);
-        setTimeout(() => setHighlight(false), 600);
-        new Audio("/ding.mp3").play().catch(() => {});
-      }
+        };
+      });
+
+      setTimeout(() => setHighlight(false), 600);
+      new Audio("/ding.mp3").play().catch(() => {});
     };
 
-    const onAuctionEnded = (data) => {
-      if (data.auctionId === initialAuction._id) {
-        setAuction((prev) => ({ ...prev, ended: true }));
-        setMessage(
-          `🏁 Auction ended — Winner: ${data.winner}, Final Bid: ₹${data.finalBid}`
-        );
-      }
+    const handleAuctionEnded = (data) => {
+      if (data.auctionId !== initialAuction._id) return;
+      setAuction((prev) => ({ ...prev, ended: true }));
+      setMessage(
+        `🏁 Auction ended — Winner: ${data.winner}, Final Bid: ₹${data.finalBid}`
+      );
     };
 
-    socket.on("bid-updated", onBidUpdated);
-    socket.on("auction-ended", onAuctionEnded);
+    socket.on("bid-updated", handleBidUpdated);
+    socket.on("auction-ended", handleAuctionEnded);
 
     return () => {
       socket.emit("leave-auction", initialAuction._id);
-      socket.off("bid-updated", onBidUpdated);
-      socket.off("auction-ended", onAuctionEnded);
+      socket.off("bid-updated", handleBidUpdated);
+      socket.off("auction-ended", handleAuctionEnded);
     };
   }, [initialAuction]);
 
-  // COUNTDOWN TIMER
-  useEffect(() => {
-    if (!auction) return;
-    const updateTimer = () => {
-      const diff = new Date(auction.endAt) - new Date();
-      if (diff <= 0) {
-        setTimeLeft("Auction ended");
+  // TIMER (fixed)
+  const updateTimer = useCallback(() => {
+    const diff = new Date(auction.endAt) - new Date();
+    if (diff <= 0) {
+      setTimeLeft("Auction ended");
+      if (!auction.ended) {
         setAuction((prev) => ({ ...prev, ended: true }));
-        clearInterval(timerRef.current);
-      } else {
-        const h = String(Math.floor(diff / 3600000)).padStart(2, "0");
-        const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
-        const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
-        setTimeLeft(`${h}:${m}:${s}`);
       }
-    };
+      clearInterval(timerRef.current);
+    } else {
+      const h = String(Math.floor(diff / 3600000)).padStart(2, "0");
+      const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, "0");
+      const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, "0");
+      setTimeLeft(`${h}:${m}:${s}`);
+    }
+  }, [auction.endAt, auction.ended]);
+
+  useEffect(() => {
+    if (!auction?.endAt) return;
     updateTimer();
     timerRef.current = setInterval(updateTimer, 1000);
     return () => clearInterval(timerRef.current);
-  }, [auction]);
+  }, [auction.endAt, updateTimer]);
 
+  // PLACE BID
   const placeBid = () => {
     const amount = Number(bidAmount);
     if (!amount || amount <= (auction.currentBid ?? auction.basePrice ?? 0)) {
@@ -87,96 +97,113 @@ export default function AuctionRoom({
       return;
     }
     socket.emit("place-bid", { auctionId: auction._id, amount });
-    setBidAmount("");
+    setBidAmount(amount);
     setMessage("");
   };
 
+  const incrementBid = () => setBidAmount((prev) => Number(prev) + 100);
+  const decrementBid = () =>
+    setBidAmount((prev) =>
+      Math.max(prev - 100, auction.currentBid ?? auction.basePrice ?? 0)
+    );
+
   return (
     <div
-      className={`max-w-6xl mx-auto mt-6 ${
-        showBidHistory
-          ? "grid md:grid-cols-[2fr_1fr] gap-6"
-          : "flex justify-center"
-      } animate-fadeIn`}
+      className={`max-w-6xl mx-auto mt-8 grid ${
+        showBidHistory ? "md:grid-cols-[2fr_1fr]" : "md:grid-cols-1"
+      } gap-6 px-4`}
     >
-      {/* LEFT PANEL — AUCTION DETAILS */}
-      <div
-        className={`p-6 bg-white rounded-2xl shadow-lg w-full ${
-          showBidHistory ? "" : "max-w-3xl"
-        }`}
-      >
+      {/* LEFT PANEL */}
+      <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
         <button
           onClick={onBack}
-          className="mb-4 px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-gray-800 font-medium"
+          className="mb-4 px-3 py-1 bg-gray-100 rounded-xl hover:bg-gray-200 font-medium transition cursor-pointer"
         >
           ← Back
         </button>
 
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-2xl font-bold">{auction.title}</h2>
+        <div className="flex justify-between items-start mb-3">
+          <h2 className="text-2xl font-bold truncate">{auction.title}</h2>
           {!auction.ended && (
-            <span className="bg-red-600 text-white text-xs px-2 py-1 rounded-full">
-              LIVE 🔴
+            <span className="bg-green-800 text-white text-xs px-3 py-1 rounded-full font-semibold animate-pulse">
+              LIVE 🟢
             </span>
           )}
         </div>
 
-        <p className="text-gray-600 mb-1">Category: {auction.category}</p>
-        <p className="text-gray-600 mb-4">{auction.description}</p>
+        <p className="text-gray-500 mb-2">
+          Category:{" "}
+          <span className="text-gray-700 font-medium">{auction.category}</span>
+        </p>
+        <p className="text-gray-600 mb-5">{auction.description}</p>
 
         {auction.image && (
-          <div className="rounded-xl overflow-hidden mb-4 border bg-gray-50 flex justify-center">
+          <div className="rounded-xl overflow-hidden mb-5 border bg-gray-50 flex justify-center shadow-sm">
             <img
               src={auction.image}
               alt="Auction"
-              className="object-contain max-h-80 w-full"
+              className="object-contain max-h-72 w-full hover:scale-105 transition-transform duration-200"
             />
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="p-4 bg-gray-50 rounded-lg text-center">
-            <p className="text-sm text-gray-500">Base Price</p>
-            <p className="text-xl font-bold">₹{auction.basePrice}</p>
-            <p className="text-sm text-gray-500 mt-2">
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="bg-gray-50 rounded-xl p-4 text-center shadow-inner">
+            <p className="text-sm text-gray-400">Base Price</p>
+            <p className="text-xl font-bold text-gray-800">
+              ₹{auction.basePrice}
+            </p>
+            <p className="text-sm text-gray-400 mt-2">
               {auction.ended ? "Final Bid" : "Current Bid"}
             </p>
             <p
-              className={`text-2xl font-bold transition-transform ${
-                highlight ? "text-green-600 scale-110" : ""
-              }`}
+              className={`text-2xl font-extrabold ${
+                highlight ? "text-green-600 scale-105" : "text-gray-900"
+              } transition-transform`}
             >
               ₹{auction.currentBid}
             </p>
           </div>
-          <div className="p-4 bg-gray-50 rounded-lg text-center">
-            <p className="text-sm text-gray-500">Highest Bidder</p>
-            <p className="text-lg font-semibold">
+
+          <div className="bg-gray-50 rounded-xl p-4 text-center shadow-inner">
+            <p className="text-sm text-gray-400">Highest Bidder</p>
+            <p className="text-lg font-semibold text-gray-700">
               {auction.highestBidderName || "No bids yet"}
             </p>
             <p className="text-sm text-blue-600 mt-2">Ends in:</p>
-            <p className="text-2xl font-bold">{timeLeft}</p>
+            <p className="text-2xl font-bold text-gray-900">{timeLeft}</p>
           </div>
         </div>
 
         {message && (
-          <div className="mb-3 p-2 bg-yellow-100 text-yellow-800 rounded">
+          <div className="mb-4 p-3 bg-yellow-100 text-yellow-900 rounded-xl font-medium shadow animate-pulse">
             {message}
           </div>
         )}
 
         {canBid && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={decrementBid}
+              className="px-3 py-2 bg-gray-200 rounded-xl hover:bg-gray-300 transition font-semibold"
+            >
+              -
+            </button>
             <input
               type="number"
               value={bidAmount}
               onChange={(e) => setBidAmount(e.target.value)}
-              placeholder="Enter your bid"
-              className="flex-1 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-400 outline-none"
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-2 focus:ring-2 focus:ring-green-400 outline-none transition"
             />
             <button
+              onClick={incrementBid}
+              className="px-3 py-2 bg-gray-200 rounded-xl hover:bg-gray-300 transition font-semibold"
+            >
+              +
+            </button>
+            <button
               onClick={placeBid}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+              className="bg-green-600 text-white px-5 py-2 rounded-xl font-semibold hover:bg-green-700 transition transform hover:scale-105"
             >
               Place Bid
             </button>
@@ -184,9 +211,9 @@ export default function AuctionRoom({
         )}
       </div>
 
-      {/* RIGHT PANEL — BID HISTORY */}
+      {/* RIGHT PANEL - Only show if there's bid history */}
       {showBidHistory && (
-        <div className="p-6 bg-white rounded-2xl shadow-lg h-fit md:sticky md:top-6">
+        <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 md:sticky md:top-6 md:h-full max-h-[calc(100vh-8rem)] overflow-y-auto">
           <BidHistory
             bids={auction.bidHistory}
             title="Bid History"

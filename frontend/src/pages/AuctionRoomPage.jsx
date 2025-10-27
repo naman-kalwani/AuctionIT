@@ -38,10 +38,11 @@ export default function AuctionRoomPage() {
   // SOCKET REAL-TIME UPDATES
   useEffect(() => {
     if (!auction || !user) return;
+
     socket.auth = { token: user.token };
     if (!socket.connected) socket.connect();
 
-    const onBidUpdated = (data) => {
+    const handleBidUpdated = (data) => {
       if (String(auction._id) === String(data.auctionId)) {
         setAuction((prev) => ({
           ...prev,
@@ -52,7 +53,7 @@ export default function AuctionRoomPage() {
       }
     };
 
-    const onAuctionEnded = (data) => {
+    const handleAuctionEnded = (data) => {
       if (String(auction._id) === String(data.auctionId)) {
         setAuction((prev) => ({
           ...prev,
@@ -62,22 +63,27 @@ export default function AuctionRoomPage() {
       }
     };
 
-    socket.on("bid-updated", onBidUpdated);
-    socket.on("auction-ended", onAuctionEnded);
+    socket.on("bid-updated", handleBidUpdated);
+    socket.on("auction-ended", handleAuctionEnded);
+
     return () => {
-      socket.off("bid-updated", onBidUpdated);
-      socket.off("auction-ended", onAuctionEnded);
+      socket.off("bid-updated", handleBidUpdated);
+      socket.off("auction-ended", handleAuctionEnded);
     };
   }, [auction, user]);
 
   if (loading) return <div className="text-center py-8">Loading...</div>;
   if (!auction)
     return <div className="text-center py-8">Auction not found</div>;
+
   return (
     <AuctionRoom
       auction={auction}
       currentUser={user}
-      onBack={() => navigate("/")}
+      onBack={() => {
+        setAuction(null);
+        navigate("/home");
+      }}
     />
   );
 }

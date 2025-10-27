@@ -28,14 +28,28 @@ export default function AuctionList({ auctions = [], onSelect }) {
       );
   }, [auctions, searchTerm, category]);
 
+  const timeLeft = (endAt) => {
+    const diff = new Date(endAt) - new Date();
+    if (diff <= 0) return "Ended";
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    if (days >= 1) return `${days}d left`;
+    if (hours >= 1) return `${hours}h left`;
+    const mins = Math.floor(diff / (1000 * 60));
+    return `${mins}m left`;
+  };
+
+  const getTimeColor = (endAt) => {
+    const diff = new Date(endAt) - new Date();
+    const hours = diff / (1000 * 60 * 60);
+    if (hours > 24) return "bg-green-500";
+    if (hours > 3) return "bg-orange-500";
+    return "bg-red-600";
+  };
+
   return (
     <>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        {/* Heading */}
-        <h2 className="text-3xl font-semibold mb-8 text-center tracking-tight">
-          🔥 Live Auctions
-        </h2>
-
+      <div className="w-full">
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4 mb-8 items-center justify-between">
           <input
@@ -43,12 +57,12 @@ export default function AuctionList({ auctions = [], onSelect }) {
             placeholder="Search auctions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full md:w-1/2 px-4 py-2 rounded-lg bg-white shadow-sm border focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full md:w-1/2 px-4 py-2 rounded-xl bg-white shadow-sm border border-gray-200 focus:ring-2 focus:ring-[oklch(37.9%_.146_265.522)] outline-none"
           />
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full md:w-1/3 px-4 py-2 rounded-lg bg-white shadow-sm border focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full md:w-1/3 px-4 py-2 rounded-xl bg-white shadow-sm border border-gray-200 focus:ring-2 focus:ring-[oklch(37.9%_.146_265.522)] outline-none"
           >
             {categories.map((cat) => (
               <option key={cat} value={cat}>
@@ -59,7 +73,7 @@ export default function AuctionList({ auctions = [], onSelect }) {
         </div>
 
         {/* Auction Grid */}
-        <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           {filtered.length === 0 ? (
             <p className="text-center text-gray-500 col-span-full">
               No auctions found
@@ -68,66 +82,68 @@ export default function AuctionList({ auctions = [], onSelect }) {
             filtered.map((a) => (
               <div
                 key={a._id}
-                className={`relative rounded-xl overflow-hidden bg-white shadow-md hover:shadow-xl border ${
-                  a.ended ? "opacity-60" : "opacity-100"
+                onClick={() => !a.ended && onSelect(a)}
+                className={`relative rounded-2xl overflow-hidden bg-white shadow-md hover:shadow-xl border transition-transform hover:-translate-y-1 cursor-pointer ${
+                  a.ended ? "opacity-70" : "opacity-100"
                 }`}
               >
-                {/* LIVE Badge */}
+                {/* Time Left */}
                 {!a.ended && (
-                  <span className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">
-                    LIVE 🔴
+                  <span
+                    className={`absolute top-2 right-2 text-white text-xs px-3 py-1 rounded-full font-semibold ${getTimeColor(
+                      a.endAt
+                    )}`}
+                  >
+                    {timeLeft(a.endAt)}
                   </span>
                 )}
 
+                {/* Image */}
                 <div
-                  className="w-full bg-gray-100 flex items-center justify-center overflow-hidden"
-                  style={{ aspectRatio: "5/3", minHeight: "12rem" }}
+                  className="bg-gray-100 flex items-center justify-center overflow-hidden"
+                  style={{ aspectRatio: "4/3", minHeight: "10rem" }}
                 >
                   {a.image ? (
                     <img
                       src={a.image}
                       alt={a.title}
                       loading="lazy"
-                      decoding="async"
-                      onClick={() => setPreviewSrc(a.image)}
-                      role="button"
-                      aria-label={`Preview ${a.title}`}
-                      className="w-full h-full object-contain cursor-pointer"
-                      style={{ backgroundColor: "#f8fafc" }}
+                      className="max-w-full max-h-full object-contain"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-lg">
-                      No Image
-                    </div>
+                    <div className="text-gray-400 text-lg">No Image</div>
                   )}
                 </div>
 
                 {/* Content */}
                 <div className="p-4 flex flex-col gap-3">
-                  <h3 className="text-lg font-semibold">{a.title}</h3>
+                  <h3 className="text-lg font-bold text-gray-800 truncate">
+                    {a.title}
+                  </h3>
 
-                  <div className="flex justify-between text-gray-500 text-sm">
+                  <div className="flex justify-between text-gray-500 text-sm font-semibold">
                     <span>{a.category}</span>
                     <span>
                       {a.ended
                         ? "Ended"
-                        : `Ends: ${new Date(a.endAt).toLocaleDateString()}`}
+                        : new Date(a.endAt).toLocaleDateString()}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between mt-2 gap-4">
+                  <div className="flex justify-between items-center mt-2">
                     <div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 font-semibold">
                         {a.ended ? "Final Bid" : "Current Bid"}
                       </p>
-                      <p className="text-2xl font-bold">
+                      <p className="text-xl font-extrabold text-gray-800">
                         ₹{(a.currentBid ?? a.basePrice).toLocaleString("en-IN")}
                       </p>
                     </div>
-
                     <div className="text-right">
-                      <p className="text-sm text-gray-500">Highest Bidder</p>
-                      <p className="font-medium">
+                      <p className="text-sm text-gray-500 font-semibold">
+                        Highest Bidder
+                      </p>
+                      <p className="font-bold text-gray-800">
                         {a.highestBidderName || "No bids yet"}
                       </p>
                     </div>
@@ -135,22 +151,22 @@ export default function AuctionList({ auctions = [], onSelect }) {
 
                   {a.ended ? (
                     <div className="mt-3 flex gap-3 items-center">
-                      <div
-                        className="flex-1 flex items-center justify-center py-2 px-3 rounded-full text-white text-sm font-semibold"
-                        style={{
-                          background: "linear-gradient(90deg,#ef4444,#dc2626)",
-                        }}
-                      >
+                      <div className="flex-1 flex items-center justify-center py-2 px-3 rounded-full text-white text-sm font-semibold bg-red-600">
                         SOLD
                       </div>
-                      {/* If the current user is the owner, allow viewing bid history */}
                       {user &&
-                        (a.owner?.username
-                          ? a.owner.username === user.username
-                          : a.owner === user.id) && (
+                        (a.owner?.username === user.username ||
+                          a.owner === user.id) && (
                           <button
-                            onClick={() => setPreviewBids(a)}
-                            className="px-3 py-2 bg-white border border-blue-200 text-blue-700 rounded text-sm hover:bg-blue-50 shadow-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreviewBids(a);
+                            }}
+                            className="px-3 py-2 border rounded-lg text-sm font-semibold shadow-sm hover:bg-gray-50"
+                            style={{
+                              borderColor: "oklch(37.9% .146 265.522)",
+                              color: "oklch(37.9% .146 265.522)",
+                            }}
                           >
                             View Bids
                           </button>
@@ -158,8 +174,15 @@ export default function AuctionList({ auctions = [], onSelect }) {
                     </div>
                   ) : (
                     <button
-                      onClick={() => onSelect(a)}
-                      className="mt-3 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(a);
+                      }}
+                      className="mt-3 w-full py-2 rounded-lg transition font-semibold shadow-sm hover:shadow-md"
+                      style={{
+                        backgroundColor: "oklch(37.9% .146 265.522)",
+                        color: "white",
+                      }}
                     >
                       Join Auction
                     </button>
@@ -171,27 +194,23 @@ export default function AuctionList({ auctions = [], onSelect }) {
         </div>
       </div>
 
-      {/* Image preview modal */}
+      {/* Image Preview Modal */}
       {previewSrc && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           onClick={() => setPreviewSrc(null)}
-          role="dialog"
-          aria-modal="true"
         >
           <button
-            className="absolute top-6 right-6 text-white text-3xl leading-none"
+            className="absolute top-6 right-6 text-white text-3xl"
             onClick={(e) => {
               e.stopPropagation();
               setPreviewSrc(null);
             }}
-            aria-label="Close preview"
           >
             ×
           </button>
-
           <div
-            className="max-w-4xl max-h-[85vh] w-full bg-white p-4 rounded shadow-lg flex items-center justify-center"
+            className="max-w-4xl max-h-[85vh] bg-white p-4 rounded-2xl flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             <img
@@ -203,20 +222,16 @@ export default function AuctionList({ auctions = [], onSelect }) {
         </div>
       )}
 
-      {/* Bid history modal for owners */}
+      {/* Bid History Modal */}
       {previewBids && (
-        <>
-          {/* lazy import-like local component use */}
-          {/** Reusable BidHistory component handles modal rendering when onClose is passed */}
-          <BidHistory
-            bids={previewBids.bidHistory}
-            title={`Bid History — ${previewBids.title}`}
-            currentBid={previewBids.currentBid}
-            basePrice={previewBids.basePrice}
-            ended={previewBids.ended}
-            onClose={() => setPreviewBids(null)}
-          />
-        </>
+        <BidHistory
+          bids={previewBids.bidHistory}
+          title={`Bid History — ${previewBids.title}`}
+          currentBid={previewBids.currentBid}
+          basePrice={previewBids.basePrice}
+          ended={previewBids.ended}
+          onClose={() => setPreviewBids(null)}
+        />
       )}
     </>
   );
