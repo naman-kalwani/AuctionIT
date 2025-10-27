@@ -83,47 +83,67 @@ export default function Navbar({
               )}
             </div>
 
-            {/* Desktop user info */}
-            <div className="hidden sm:flex items-center gap-3">
-              <span className="font-medium text-gray-800">
-                {user.username} 👤
-              </span>
-              <button
-                onClick={onLogout}
-                className="px-3 py-1 rounded-xl text-white hover:opacity-90 transition cursor-pointer"
-                style={{ backgroundColor: "oklch(37.9% .146 265.522)" }}
-              >
-                Logout
-              </button>
-            </div>
-
-            {/* Mobile dropdown */}
-            <div className="relative sm:hidden" ref={userMenuRef}>
+            {/* User Menu Dropdown (All screens) */}
+            <div className="relative" ref={userMenuRef}>
               <button
                 id="userBtn"
                 onClick={() => {
                   setUserMenuOpen((v) => !v);
                   setNotifOpen(false);
                 }}
-                className="text-2xl hover:text-gray-700 transition cursor-pointer"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-gray-100 transition cursor-pointer"
               >
-                👤
+                <span className="font-medium text-gray-800 hidden sm:inline">
+                  {user.username}
+                </span>
+                <span className="text-xl">👤</span>
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-3 w-48 bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg animate-fadeSlide z-50">
-                  <div className="p-3 text-gray-800 font-semibold text-center">
-                    {user.username}
+                <div className="absolute right-0 mt-3 w-52 bg-white backdrop-blur-xl rounded-2xl shadow-lg border border-gray-200 animate-fadeSlide z-50 overflow-hidden">
+                  {/* Username Header */}
+                  <div className="px-4 py-3 border-b border-gray-200">
+                    <p className="text-gray-800 font-semibold truncate">
+                      {user.username}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {user.email}
+                    </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      onLogout();
-                    }}
-                    className="w-full text-center py-2 text-red-600 hover:bg-red-100/30 transition rounded-b-2xl"
-                  >
-                    Logout
-                  </button>
+
+                  {/* Menu Items */}
+                  <div className="py-2">
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onNavigate?.("/orders");
+                      }}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2"
+                    >
+                      <span>📦</span>
+                      <span>My Orders</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onNavigate?.("/payment-options");
+                      }}
+                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2"
+                    >
+                      <span>💳</span>
+                      <span>Payment Options</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        onLogout();
+                      }}
+                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                    >
+                      <span>🚪</span>
+                      <span>Logout</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

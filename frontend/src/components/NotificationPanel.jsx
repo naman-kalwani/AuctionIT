@@ -54,7 +54,7 @@ export default function NotificationPanel({ notifications, onClose }) {
   };
 
   return (
-    <div className="w-80 right-5 bg-white shadow-xl rounded-2xl border border-gray-200 p-4">
+    <div className="w-80 right5 bg-white shadow-xl rounded-2xl border border-gray-200 p-4">
       {/* Header */}
       <div className="flex justify-between items-center border-b border-gray-200 pb-2 mb-3">
         <h2 className="text-lg font-semibold tracking-tight">Notifications</h2>

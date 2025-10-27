@@ -11,9 +11,13 @@ import jwt from "jsonwebtoken";
 import auctionRoutes from "./routes/auctionRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import paymentTransactionRoutes from "./routes/paymentTransactionRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 
 import Auction from "./models/auction.js";
 import Notification from "./models/notification.js";
+import Payment from "./models/Payment.js";
 
 dotenv.config();
 const app = express();
@@ -41,6 +45,9 @@ const onlineUsers = new Map();
 app.use("/api/auth", authRoutes);
 app.use("/api/auctions", auctionRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/payment-methods", paymentRoutes);
+app.use("/api/payments", paymentTransactionRoutes);
+app.use("/api/orders", orderRoutes);
 app.get("/", (req, res) => res.send("Auction backend running..."));
 
 // Connect to MongoDB
@@ -224,6 +231,15 @@ setInterval(async () => {
               type: winnerNotification.type,
             });
           }
+
+          // Create payment record for winner
+          await Payment.create({
+            auction: auction._id,
+            buyer: winnerId,
+            seller: ownerId,
+            amount: auction.currentBid,
+            status: "pending",
+          });
         }
 
         // Owner notification

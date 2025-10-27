@@ -12,6 +12,9 @@ import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import PaymentOptions from "./pages/PaymentOptions";
+import Payments from "./pages/Payments";
+import Orders from "./pages/Orders";
 import Footer from "./components/Footer";
 
 export default function App() {
@@ -83,6 +86,30 @@ export default function App() {
           />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/payment-options"
+            element={
+              <ProtectedRoute>
+                <PaymentOptions />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payments"
+            element={
+              <ProtectedRoute>
+                <Payments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute>
+                <Orders />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/create"
             element={

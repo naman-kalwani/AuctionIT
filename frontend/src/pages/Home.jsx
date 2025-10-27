@@ -187,10 +187,21 @@ export default function Home() {
 
         <button
           onClick={() => {
+            navigate("/payments");
+            setSidebarOpen(false);
+          }}
+          className="mt-auto text-white px-4 py-2 rounded-lg font-semibold shadow hover:shadow-lg transition"
+          style={{ backgroundColor: "oklch(37.9% .146 265.522)" }}
+        >
+          💳 Payments
+        </button>
+
+        <button
+          onClick={() => {
             navigate("/create");
             setSidebarOpen(false);
           }}
-          className="mt-auto mb-4 bg-oklch-37.9 text-white px-4 py-2 rounded-lg font-semibold shadow hover:shadow-lg transition"
+          className="mb-4 text-white px-4 py-2 rounded-lg font-semibold shadow hover:shadow-lg transition"
           style={{ backgroundColor: "oklch(37.9% .146 265.522)" }}
         >
           + Create Auction
