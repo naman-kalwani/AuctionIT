@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { api } from "../api";
+import { InlineLoader, EmptyState } from "../components/ui/Loaders";
 
 export default function Payments() {
   const { user } = useAuth();
@@ -64,6 +65,13 @@ export default function Payments() {
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6 mt-4 sm:mt-6">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-6 px-6 py-2 rounded-xl font-semibold bg-gray-200 text-gray-800 hover:bg-gray-300 transition"
+      >
+        ← Back
+      </button>
       <h1
         className="text-2xl sm:text-3xl font-bold mb-6"
         style={{ color: "oklch(37.9% .146 265.522)" }}
@@ -126,25 +134,25 @@ export default function Payments() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading...</div>
+        <InlineLoader text="Loading payments..." />
       ) : (
         <>
           {/* Pending Payments Tab */}
           {activeTab === "pending" && (
             <div>
               {pendingPayments.length === 0 ? (
-                <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-500">
-                  <p className="text-lg">No pending payments</p>
-                  <p className="text-sm mt-2">
-                    You don't have any auctions to pay for at the moment.
-                  </p>
-                </div>
+                <EmptyState
+                  title="No pending payments"
+                  subtitle="You don't have any auctions to pay for at the moment."
+                  icon="💳"
+                />
               ) : (
                 <div className="grid gap-4">
-                  {pendingPayments.map((payment) => (
+                  {pendingPayments.map((payment, idx) => (
                     <div
                       key={payment.auction._id}
-                      className="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-200"
+                      className="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-200 page-transition-fast"
+                      style={{ animationDelay: `${idx * 0.08}s` }}
                     >
                       <div className="flex flex-col sm:flex-row gap-4">
                         {/* Auction Image */}
@@ -225,7 +233,7 @@ export default function Payments() {
                               backgroundColor: "oklch(37.9% .146 265.522)",
                             }}
                           >
-                            Mark as Paid
+                            Pay Now
                           </button>
                         </div>
                       </div>
@@ -240,18 +248,18 @@ export default function Payments() {
           {activeTab === "received" && (
             <div>
               {receivedPayments.length === 0 ? (
-                <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-500">
-                  <p className="text-lg">No payments received</p>
-                  <p className="text-sm mt-2">
-                    You haven't received any payments for your auctions yet.
-                  </p>
-                </div>
+                <EmptyState
+                  title="No payments received"
+                  subtitle="You haven't received any payments for your auctions yet."
+                  icon="📥"
+                />
               ) : (
                 <div className="grid gap-4">
-                  {receivedPayments.map((payment) => (
+                  {receivedPayments.map((payment, idx) => (
                     <div
                       key={payment.auction._id}
-                      className="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-200"
+                      className="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-200 page-transition-fast"
+                      style={{ animationDelay: `${idx * 0.08}s` }}
                     >
                       <div className="flex flex-col sm:flex-row gap-4">
                         {/* Auction Image */}
@@ -323,14 +331,6 @@ export default function Payments() {
           )}
         </>
       )}
-
-      {/* Back Button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="mt-6 px-6 py-2 rounded-xl font-semibold bg-gray-200 text-gray-800 hover:bg-gray-300 transition"
-      >
-        ← Back
-      </button>
     </div>
   );
 }

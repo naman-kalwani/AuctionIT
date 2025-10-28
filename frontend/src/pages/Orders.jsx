@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import { api } from "../api";
+import { InlineLoader, EmptyState } from "../components/ui/Loaders";
 
 export default function Orders() {
   const { user } = useAuth();
@@ -47,21 +48,29 @@ export default function Orders() {
         My Orders
       </h1>
 
+      {/* Back Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="mt-6 px-6 py-2 rounded-xl font-semibold bg-gray-200 text-gray-800 hover:bg-gray-300 transition"
+      >
+        ← Back
+      </button>
+
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading orders...</div>
+        <InlineLoader text="Loading orders..." />
       ) : orders.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-500">
-          <p className="text-lg">No orders yet</p>
-          <p className="text-sm mt-2">
-            Your completed orders will appear here after payment.
-          </p>
-        </div>
+        <EmptyState
+          title="No orders yet"
+          subtitle="Your completed orders will appear here after payment."
+          icon="📦"
+        />
       ) : (
         <div className="grid gap-4">
-          {orders.map((order) => (
+          {orders.map((order, idx) => (
             <div
               key={order._id}
-              className="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-200 hover:shadow-lg transition"
+              className="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-200 hover:shadow-lg transition page-transition-fast"
+              style={{ animationDelay: `${idx * 0.08}s` }}
             >
               <div className="flex flex-col sm:flex-row gap-4">
                 {/* Auction Image */}
@@ -152,14 +161,6 @@ export default function Orders() {
           ))}
         </div>
       )}
-
-      {/* Back Button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="mt-6 px-6 py-2 rounded-xl font-semibold bg-gray-200 text-gray-800 hover:bg-gray-300 transition"
-      >
-        ← Back
-      </button>
     </div>
   );
 }

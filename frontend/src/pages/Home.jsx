@@ -4,6 +4,8 @@ import { socket } from "../socket";
 import { api } from "../api";
 import { useAuth } from "../context/useAuth";
 import { Menu, X } from "lucide-react";
+import { FaPlus } from "react-icons/fa";
+import { PageSkeleton, EmptyState } from "../components/ui/Loaders";
 
 export default function Home() {
   const { user } = useAuth();
@@ -11,6 +13,7 @@ export default function Home() {
   const location = useLocation();
 
   const [auctions, setAuctions] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState(location.state?.currentView || "all");
   const [search, setSearch] = useState(location.state?.search || "");
   const [categoryFilter, setCategoryFilter] = useState(
@@ -19,6 +22,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const loadAuctions = useCallback(async () => {
+    setLoading(true);
     try {
       const { data } = await api.get("/api/auctions");
       setAuctions(
@@ -34,6 +38,8 @@ export default function Home() {
       );
     } catch (err) {
       console.error("fetch auctions error:", err);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -67,9 +73,25 @@ export default function Home() {
       );
     });
 
+    socket.on("auction-created", (newAuction) => {
+      setAuctions((prev) => [
+        {
+          ...newAuction,
+          highestBidderName: newAuction.highestBidder?.username || null,
+          bidHistory:
+            newAuction.bidHistory?.map((b) => ({
+              ...b,
+              bidderName: b.userId?.username || "Unknown",
+            })) || [],
+        },
+        ...prev,
+      ]);
+    });
+
     return () => {
       socket.off("bid-updated");
       socket.off("auction-ended");
+      socket.off("auction-created");
     };
   }, []);
 
@@ -104,19 +126,33 @@ export default function Home() {
     return { text: `${h}h`, color: "bg-red-500" };
   };
 
+  if (loading) {
+    return <PageSkeleton />;
+  }
+
   return (
     <div className="flex flex-col md:flex-row w-full bg-gray-50">
       {/* Mobile Header */}
-      <div className="md:hidden flex justify-between items-center bg-white shadow px-4 py-3">
+      <div className="md:hidden flex justify-between items-center gap-3 bg-white shadow px-4 py-3">
         <h1
-          className="text-xl font-bold"
+          className="text-xl font-bold shrink-0"
           style={{ color: "oklch(37.9% .146 265.522)" }}
         >
           Auctions
         </h1>
+        <input
+          type="text"
+          placeholder="Search..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 px-3 py-1.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50"
+          style={{
+            focusRing: "oklch(37.9% .146 265.522)",
+          }}
+        />
         <button
           onClick={() => setSidebarOpen((p) => !p)}
-          className="text-gray-700 hover:text-black"
+          className="text-gray-700 hover:text-black shrink-0"
         >
           {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -154,12 +190,12 @@ export default function Home() {
               }}
             >
               {tab === "all"
-                ? "Live Auctions"
+                ? "🔥 Live Auctions"
                 : tab === "mine"
-                ? "My Auctions"
+                ? "🫵🏻 My Auctions"
                 : tab === "bids"
-                ? "My Bids"
-                : "Past Auctions"}
+                ? "💸 My Bids"
+                : "📅 Past Auctions"}
             </button>
           ))}
 
@@ -215,27 +251,32 @@ export default function Home() {
           style={{ color: "oklch(37.9% .146 265.522)" }}
         >
           {view === "all"
-            ? "Live Auctions"
+            ? "🔥Live Auctions"
             : view === "mine"
-            ? "My Auctions"
+            ? "🫵🏻 My Auctions"
             : view === "bids"
-            ? "My Bids"
-            : "Past Auctions"}
+            ? "💸 My Bids"
+            : "📅 Past Auctions"}
         </h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredAuctions.length === 0 && (
-            <p className="text-gray-500 col-span-full text-center">
-              No auctions to display.
-            </p>
+            <div className="col-span-full">
+              <EmptyState
+                title="No auctions to display"
+                subtitle="Try adjusting filters or check back later."
+                icon="🔎"
+              />
+            </div>
           )}
 
-          {filteredAuctions.map((auction) => {
+          {filteredAuctions.map((auction, idx) => {
             const timeLeft = getTimeLeft(auction.endAt);
             return (
               <div
                 key={auction._id}
-                className="bg-white shadow-md hover:shadow-xl rounded-xl overflow-hidden relative cursor-pointer transition-transform hover:-translate-y-1"
+                className="group relative rounded-2xl overflow-hidden bg-linear-to-br from-white to-gray-50 shadow-lg hover:shadow-2xl border border-gray-200 transition-all duration-300 hover:-translate-y-2 cursor-pointer page-transition-fast"
+                style={{ animationDelay: `${idx * 0.05}s` }}
                 onClick={() =>
                   user
                     ? navigate(`/auction/${auction._id}`, {
@@ -244,41 +285,86 @@ export default function Home() {
                     : navigate("/login")
                 }
               >
-                <div className="relative bg-gray-100 aspect-4/3 flex justify-center items-center">
+                {/* Time Badge or SOLD Badge */}
+                {auction.ended ? (
+                  <span className="absolute top-3 right-3 px-3 py-1.5 bg-linear-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-full shadow-lg z-10">
+                    🔥 SOLD
+                  </span>
+                ) : (
+                  <span
+                    className={`absolute top-3 right-3 text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-lg z-10 ${timeLeft.color}`}
+                  >
+                    {timeLeft.text}
+                  </span>
+                )}
+
+                {/* Image */}
+                <div className="bg-linear-to-br from-gray-100 to-gray-200 aspect-4/3 flex items-center justify-center overflow-hidden relative">
                   <img
                     src={auction.image || "https://placehold.co/600x400"}
                     alt={auction.title}
-                    className="w-full h-full object-contain p-2"
+                    className="w-full h-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
                   />
-                  {!auction.ended && (
-                    <span
-                      className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-semibold text-white ${timeLeft.color}`}
-                    >
-                      {timeLeft.text}
-                    </span>
-                  )}
+                  <div className="absolute inset-0 bg-linear-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
 
-                <div className="p-4">
-                  <h3 className="font-bold text-lg truncate mb-1">
+                {/* Content */}
+                <div className="p-5">
+                  {/* Title */}
+                  <h3 className="text-xl font-bold bg-linear-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent truncate mb-2">
                     {auction.title}
                   </h3>
-                  <p className="text-sm text-gray-600 mb-1">
+
+                  {/* Category Badge */}
+                  <span className="inline-block px-3 py-1 bg-linear-to-r from-purple-100 to-blue-100 text-purple-700 rounded-full font-semibold text-sm mb-2">
                     {auction.category}
-                  </p>
-                  <p className="text-xs text-gray-500 mb-2">
+                  </span>
+
+                  {/* Owner */}
+                  <p className="text-xs text-gray-500 mb-3">
                     By {auction.owner?.username || "Unknown"}
                   </p>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="font-semibold text-gray-800">
-                      ₹{auction.currentBid ?? auction.basePrice}
-                    </span>
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-200 my-3"></div>
+
+                  {/* Price and Bidder Info */}
+                  <div className="flex justify-between items-end">
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">
+                        {auction.ended ? "Final Bid" : "Current Bid"}
+                      </p>
+                      <p
+                        className="text-2xl font-extrabold"
+                        style={{ color: "oklch(37.9% .146 265.522)" }}
+                      >
+                        ₹
+                        {(
+                          auction.currentBid ?? auction.basePrice
+                        ).toLocaleString("en-IN")}
+                      </p>
+                    </div>
                     {auction.highestBidderName && (
-                      <span className="text-gray-500 truncate">
-                        {auction.highestBidderName}
-                      </span>
+                      <div className="text-right flex-1">
+                        <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">
+                          Top Bidder
+                        </p>
+                        <p className="font-bold text-gray-800 text-sm truncate">
+                          {auction.highestBidderName}
+                        </p>
+                      </div>
                     )}
                   </div>
+
+                  {/* Action Indicator */}
+                  {!auction.ended && (
+                    <div
+                      className="mt-4 text-center py-2.5 rounded-xl font-bold text-sm text-white transition-all duration-300 group-hover:scale-105"
+                      style={{ backgroundColor: "oklch(37.9% .146 265.522)" }}
+                    >
+                      🎯 Click to Join
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -289,11 +375,14 @@ export default function Home() {
       {/* Mobile Floating Action Button */}
       <button
         onClick={() => navigate("/create")}
-        className="md:hidden fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center text-white text-2xl font-bold hover:scale-110 transition-transform z-30"
+        className="md:hidden fixed bottom-20 right-6 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 hover:rotate-90 transition-all duration-300 group z-30"
         style={{ backgroundColor: "oklch(37.9% .146 265.522)" }}
         title="Create Auction"
       >
-        +
+        <FaPlus className="text-2xl group-hover:scale-125 transition-transform duration-300" />
+        <span className="absolute -top-12 right-0 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+          Create Auction
+        </span>
       </button>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { socket } from "./socket";
 import { api } from "./api";
 import { useAuth } from "./context/useAuth";
@@ -20,6 +20,7 @@ import Footer from "./components/Footer";
 export default function App() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [notifications, setNotifications] = useState([]);
   const dingSound = useRef(null);
 
@@ -64,8 +65,13 @@ export default function App() {
     navigate("/");
   };
 
+  // Smooth scroll to top on route change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [location.pathname]);
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#f5f7fa] text-gray-800">
+    <div className="min-h-screen bg-[#f5f7fa] text-gray-800 flex flex-col">
       <Navbar
         user={user}
         notifications={notifications}
@@ -73,7 +79,7 @@ export default function App() {
         onLogout={handleLogout}
         onNavigate={navigate}
       />
-      <main className="flex-1 w-full">
+      <main className="w-full flex-1 page-transition">
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route

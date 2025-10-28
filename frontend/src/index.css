@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  scroll-behavior: smooth;
+}
+
 * {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -9,4 +13,12 @@
   display: none;
   width: 0;
   height: 0;
+}
+
+.page-transition {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.page-transition-fast {
+  animation: fadeInUp 0.25s ease-out;
 }

@@ -57,12 +57,12 @@ export default function AuctionList({ auctions = [], onSelect }) {
             placeholder="Search auctions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full md:w-1/2 px-4 py-2 rounded-xl bg-white shadow-sm border border-gray-200 focus:ring-2 focus:ring-[oklch(37.9%_.146_265.522)] outline-none"
+            className="w-full md:w-1/2 px-4 py-2 rounded-xl bg-white shadow-sm border border-gray-200 focus:ring-2 focus:ring-blue-900 outline-none"
           />
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="w-full md:w-1/3 px-4 py-2 rounded-xl bg-white shadow-sm border border-gray-200 focus:ring-2 focus:ring-[oklch(37.9%_.146_265.522)] outline-none"
+            className="w-full md:w-1/3 px-4 py-2 rounded-xl bg-white shadow-sm border border-gray-200 focus:ring-2 focus:ring-blue-900 outline-none"
           >
             {categories.map((cat) => (
               <option key={cat} value={cat}>
@@ -100,7 +100,7 @@ export default function AuctionList({ auctions = [], onSelect }) {
 
                 {/* Image */}
                 <div
-                  className="bg-gray-100 flex items-center justify-center overflow-hidden"
+                  className="bg-gray-100 flex items-center justify-center overflow-hidden relative"
                   style={{ aspectRatio: "4/3", minHeight: "10rem" }}
                 >
                   {a.image ? (
@@ -108,10 +108,17 @@ export default function AuctionList({ auctions = [], onSelect }) {
                       src={a.image}
                       alt={a.title}
                       loading="lazy"
-                      className="max-w-full max-h-full object-contain"
+                      className="max-w-full max-h-full object-contain transition-opacity duration-300 opacity-0"
+                      onLoad={(e) => e.target.classList.remove("opacity-0")}
                     />
                   ) : (
                     <div className="text-gray-400 text-lg">No Image</div>
+                  )}
+                  {a.image && (
+                    <div
+                      className="absolute inset-0 bg-gray-200 animate-pulse pointer-events-none"
+                      style={{ zIndex: -1 }}
+                    />
                   )}
                 </div>
 

@@ -146,7 +146,7 @@ io.on("connection", (socket) => {
           user: ownerId,
           auction: auction._id,
           type: "BID_PLACED",
-          message: `💰 New bid of ₹${amount} on "${auction.title}" by ${socket.user.username}`,
+          message: `New bid of ₹${amount} on "${auction.title}" by ${socket.user.username}`,
         });
         if (onlineUsers.has(ownerId)) {
           io.to(onlineUsers.get(ownerId)).emit("notification", {
@@ -162,7 +162,7 @@ io.on("connection", (socket) => {
           user: previousHighestBidder,
           auction: auction._id,
           type: "OUTBID",
-          message: `😞 You were outbid on "${auction.title}". New bid: ₹${amount}`,
+          message: `You were outbid on "${auction.title}". New bid: ₹${amount}`,
         });
         if (onlineUsers.has(previousHighestBidder)) {
           io.to(onlineUsers.get(previousHighestBidder)).emit("notification", {
@@ -177,7 +177,7 @@ io.on("connection", (socket) => {
         user: userId,
         auction: auction._id,
         type: "NEW_BID_SUCCESS",
-        message: `✅ Your bid of ₹${amount} on "${auction.title}" was placed successfully`,
+        message: `Your bid of ₹${amount} on "${auction.title}" was placed successfully`,
       });
       socket.emit("notification", {
         message: bidderNotification.message,
@@ -217,6 +217,13 @@ setInterval(async () => {
           finalBid: auction.currentBid,
         });
 
+        // Also emit globally so all users see the auction ended in their lists
+        io.emit("auction-ended", {
+          auctionId: auction._id,
+          winner: auction.highestBidder?.username || "No winner",
+          finalBid: auction.currentBid,
+        });
+
         // Winner notification
         if (winnerId) {
           const winnerNotification = await Notification.create({
@@ -248,7 +255,7 @@ setInterval(async () => {
             user: ownerId,
             auction: auction._id,
             type: "AUCTION_RESULT",
-            message: `🏁 Your auction "${auction.title}" ended. Winner: ${
+            message: `Your auction "${auction.title}" ended. Winner: ${
               auction.highestBidder?.username || "No one"
             }`,
           });
@@ -291,7 +298,7 @@ setInterval(async () => {
             user: ownerId,
             auction: auction._id,
             type: "AUCTION_ENDING_SOON",
-            message: `⏰ Your auction "${auction.title}" ends in 5 minutes!`,
+            message: `Your auction "${auction.title}" ends in 5 minutes!`,
           });
           if (onlineUsers.has(ownerId)) {
             io.to(onlineUsers.get(ownerId)).emit("notification", {

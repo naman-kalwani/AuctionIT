@@ -54,7 +54,7 @@ export default function NotificationPanel({ notifications, onClose }) {
   };
 
   return (
-    <div className="w-80 right5 bg-white shadow-xl rounded-2xl border border-gray-200 p-4">
+    <div className="w-80 bg-white shadow-xl rounded-2xl border border-gray-200 p-4">
       {/* Header */}
       <div className="flex justify-between items-center border-b border-gray-200 pb-2 mb-3">
         <h2 className="text-lg font-semibold tracking-tight">Notifications</h2>
@@ -83,7 +83,7 @@ export default function NotificationPanel({ notifications, onClose }) {
                 className={`p-3 rounded-lg ${style.bgColor} ${style.textColor} hover:shadow-md transition cursor-pointer border-l-4 ${style.borderColor}`}
               >
                 <div className="flex items-start gap-2">
-                  <span className="text-lg flex-shrink-0">{style.icon}</span>
+                  <span className="text-lg shrink-0">{style.icon}</span>
                   <div className="flex-1">
                     <p className="text-sm font-medium">{n.message}</p>
                     {n.time && (
