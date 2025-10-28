@@ -93,19 +93,19 @@ export default function NotificationPanel({
   });
 
   return (
-    <div className="w-80 sm:w-96 bg-white shadow-2xl rounded-2xl border border-gray-200 overflow-hidden">
+    <div className="w-[calc(100vw-2rem)] sm:w-96 max-w-md bg-white shadow-2xl rounded-2xl border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-linear-to-r from-purple-50 to-pink-50">
-        <div className="flex justify-between items-center mb-3">
+      <div className="p-3 sm:p-4 border-b border-gray-200 bg-linear-to-r from-purple-50 to-pink-50">
+        <div className="flex justify-between items-center mb-2 sm:mb-3">
           <h2
-            className="text-xl font-bold tracking-tight"
+            className="text-lg sm:text-xl font-bold tracking-tight"
             style={{ color: "oklch(37.9% .146 265.522)" }}
           >
             🔔 Notifications
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 transition-all hover:rotate-90 duration-300 cursor-pointer text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/50"
+            className="text-gray-400 hover:text-gray-700 transition-all hover:rotate-90 duration-300 cursor-pointer text-lg sm:text-xl w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-white/50"
             aria-label="Close notifications"
           >
             ✖
@@ -113,10 +113,10 @@ export default function NotificationPanel({
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 text-sm">
+        <div className="flex gap-1.5 sm:gap-2 text-xs sm:text-sm">
           <button
             onClick={() => setFilter("unread")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+            className={`flex-1 px-2 sm:px-3 py-1.5 rounded-lg font-medium transition-all truncate ${
               filter === "unread"
                 ? "text-white shadow-md"
                 : "bg-white text-gray-600 hover:bg-gray-50"
@@ -126,11 +126,13 @@ export default function NotificationPanel({
                 filter === "unread" ? "oklch(37.9% .146 265.522)" : undefined,
             }}
           >
-            Unread ({notifications?.filter((n) => !n.read).length || 0})
+            <span className="hidden sm:inline">Unread </span>
+            <span className="sm:hidden">📭 </span>(
+            {notifications?.filter((n) => !n.read).length || 0})
           </button>
           <button
             onClick={() => setFilter("all")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+            className={`flex-1 px-2 sm:px-3 py-1.5 rounded-lg font-medium transition-all truncate ${
               filter === "all"
                 ? "text-white shadow-md"
                 : "bg-white text-gray-600 hover:bg-gray-50"
@@ -140,13 +142,14 @@ export default function NotificationPanel({
                 filter === "all" ? "oklch(37.9% .146 265.522)" : undefined,
             }}
           >
-            All ({notifications?.length || 0})
+            <span className="hidden sm:inline">All </span>
+            <span className="sm:hidden">📋 </span>({notifications?.length || 0})
           </button>
         </div>
       </div>
 
       {/* Notification List */}
-      <div className="max-h-[400px] overflow-y-auto">
+      <div className="max-h-[400px] sm:max-h-[500px] overflow-y-auto">
         {!filteredNotifications || filteredNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-400">
             <div className="text-5xl mb-3">�</div>
@@ -164,23 +167,23 @@ export default function NotificationPanel({
               return (
                 <div
                   key={n._id || i}
-                  className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 cursor-pointer group ${
+                  className={`p-3 sm:p-4 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 cursor-pointer group ${
                     !n.read ? "bg-blue-50/30" : ""
                   }`}
                   onClick={() => onMarkAsRead?.(n._id)}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     {/* Icon */}
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${style.iconBg} group-hover:scale-110 transition-transform`}
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 ${style.iconBg} group-hover:scale-110 transition-transform`}
                     >
-                      <span className="text-xl">{style.icon}</span>
+                      <span className="text-lg sm:text-xl">{style.icon}</span>
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <p
-                        className={`text-sm font-medium leading-relaxed ${style.textColor}`}
+                        className={`text-xs sm:text-sm font-medium leading-relaxed ${style.textColor}`}
                       >
                         {n.message}
                       </p>
@@ -194,9 +197,9 @@ export default function NotificationPanel({
                       </div>
                     </div>
 
-                    {/* Type Badge */}
+                    {/* Type Badge - Hidden on mobile, visible on hover on desktop */}
                     <div
-                      className={`text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${style.iconBg} ${style.textColor} font-medium shrink-0`}
+                      className={`hidden sm:block text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${style.iconBg} ${style.textColor} font-medium shrink-0 max-w-[100px] truncate`}
                     >
                       {n.type?.replace(/_/g, " ")}
                     </div>

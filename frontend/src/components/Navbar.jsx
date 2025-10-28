@@ -76,7 +76,7 @@ export default function Navbar({
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white/90 backdrop-blur-xl rounded-2xl shadow-lg animate-fadeSlide z-50">
+                <div className="fixed sm:absolute right-0 mt-3 animate-fadeSlide z-50">
                   <NotificationPanel
                     notifications={notifications}
                     onClose={() => setNotifOpen(false)}
@@ -95,57 +95,91 @@ export default function Navbar({
                   setUserMenuOpen((v) => !v);
                   setNotifOpen(false);
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-gray-100 transition cursor-pointer"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition-all duration-200 cursor-pointer group"
               >
-                <span className="font-medium text-gray-800 hidden sm:inline">
+                <span className="font-semibold text-gray-800 hidden sm:inline transition-colors [.group:hover_&]:text-[oklch(37.9%_.146_265.522)]">
                   {user.username}
                 </span>
-                <span className="text-xl">👤</span>
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all">
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
               </button>
 
               {userMenuOpen && (
-                <div className="absolute right-0 mt-3 w-52 bg-white backdrop-blur-xl rounded-2xl shadow-lg border border-gray-200 animate-fadeSlide z-50 overflow-hidden">
+                <div className="fixed sm:absolute right-0 sm:right-0 mt-3 w-64 sm:w-72 bg-white backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200 animate-fadeSlide z-50 overflow-hidden">
                   {/* Username Header */}
-                  <div className="px-4 py-3 border-b border-gray-200">
-                    <p className="text-gray-800 font-semibold truncate">
-                      {user.username}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {user.email}
-                    </p>
+                  <div className="relative px-5 py-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3 mb-1">
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-bold text-lg shadow-sm">
+                        {user.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-lg truncate text-gray-800">
+                          {user.username}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Menu Items */}
-                  <div className="py-2">
+                  <div className="py-2 px-2">
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
                         onNavigate?.("/orders");
                       }}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2"
+                      className="w-full text-left px-4 py-3 rounded-xl text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-all duration-200 flex items-center gap-3 group/item"
                     >
-                      <span>📦</span>
-                      <span>My Orders</span>
+                      <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center group-hover/item:bg-purple-200 transition-colors">
+                        <span className="text-lg">📦</span>
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-semibold">My Orders</span>
+                        <p className="text-xs text-gray-500">
+                          View your purchases
+                        </p>
+                      </div>
                     </button>
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
                         onNavigate?.("/payment-options");
                       }}
-                      className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 transition flex items-center gap-2"
+                      className="w-full text-left px-4 py-3 rounded-xl text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 flex items-center gap-3 group/item"
                     >
-                      <span>💳</span>
-                      <span>Payment Options</span>
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center group-hover/item:bg-blue-200 transition-colors">
+                        <span className="text-lg">💳</span>
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-semibold">Payment Options</span>
+                        <p className="text-xs text-gray-500">
+                          Manage payment methods
+                        </p>
+                      </div>
                     </button>
+
+                    {/* Divider */}
+                    <div className="my-2 mx-3 border-t border-gray-200"></div>
+
                     <button
                       onClick={() => {
                         setUserMenuOpen(false);
                         onLogout();
                       }}
-                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                      className="w-full text-left px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200 flex items-center gap-3 group/item"
                     >
-                      <span>🚪</span>
-                      <span>Logout</span>
+                      <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center group-hover/item:bg-red-200 transition-colors">
+                        <span className="text-lg">🚪</span>
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-semibold">Logout</span>
+                        <p className="text-xs text-red-400">
+                          Sign out of your account
+                        </p>
+                      </div>
                     </button>
                   </div>
                 </div>

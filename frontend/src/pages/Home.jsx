@@ -4,7 +4,7 @@ import { socket } from "../socket";
 import { api } from "../api";
 import { useAuth } from "../context/useAuth";
 import { Menu, X } from "lucide-react";
-import { FaPlus } from "react-icons/fa";
+import { FaPlus, FaCreditCard } from "react-icons/fa";
 import { PageSkeleton, EmptyState } from "../components/ui/Loaders";
 
 export default function Home() {
@@ -133,26 +133,31 @@ export default function Home() {
   return (
     <div className="flex flex-col md:flex-row w-full bg-gray-50">
       {/* Mobile Header */}
-      <div className="md:hidden flex justify-between items-center gap-3 bg-white shadow px-4 py-3">
+      <div className="md:hidden flex justify-between items-center gap-3 bg-white shadow-md px-4 py-3 border-b border-gray-200">
         <h1
           className="text-xl font-bold shrink-0"
           style={{ color: "oklch(37.9% .146 265.522)" }}
         >
           Auctions
         </h1>
-        <input
-          type="text"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-3 py-1.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-opacity-50"
-          style={{
-            focusRing: "oklch(37.9% .146 265.522)",
-          }}
-        />
+        <div className="flex-1 relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+            🔍
+          </span>
+          <input
+            type="text"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 rounded-xl border-2 border-gray-300 text-sm focus:outline-none focus:border-purple-400 transition-all"
+          />
+        </div>
         <button
           onClick={() => setSidebarOpen((p) => !p)}
-          className="text-gray-700 hover:text-black shrink-0"
+          className="shrink-0 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          style={{
+            color: sidebarOpen ? "oklch(37.9% .146 265.522)" : "#374151",
+          }}
         >
           {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
@@ -199,26 +204,36 @@ export default function Home() {
             </button>
           ))}
 
-          <input
-            type="text"
-            placeholder="Search by title..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-2 mt-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-oklch-37.9"
-          />
+          <div className="relative mt-4">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              🔍
+            </span>
+            <input
+              type="text"
+              placeholder="Search by title..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-oklch-37.9"
+            />
+          </div>
 
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-oklch-37.9"
-          >
-            <option value="">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+          <div className="relative mt-2">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              📦
+            </span>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-oklch-37.9 [&>option]:px-3"
+            >
+              <option value="">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <button
@@ -372,7 +387,18 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Mobile Floating Action Button */}
+      {/* Mobile Floating Action Buttons */}
+      {/* Payment Button */}
+      <button
+        onClick={() => navigate("/payments")}
+        className="md:hidden fixed bottom-40 right-6 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 transition-all duration-300 group z-30"
+        style={{ backgroundColor: "oklch(37.9% .146 265.522)" }}
+        title="Payments"
+      >
+        <FaCreditCard className="text-2xl group-hover:scale-125 transition-transform duration-300" />
+      </button>
+
+      {/* Create Auction Button */}
       <button
         onClick={() => navigate("/create")}
         className="md:hidden fixed bottom-20 right-6 w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-white hover:scale-110 hover:rotate-90 transition-all duration-300 group z-30"
@@ -380,9 +406,6 @@ export default function Home() {
         title="Create Auction"
       >
         <FaPlus className="text-2xl group-hover:scale-125 transition-transform duration-300" />
-        <span className="absolute -top-12 right-0 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-          Create Auction
-        </span>
       </button>
     </div>
   );
