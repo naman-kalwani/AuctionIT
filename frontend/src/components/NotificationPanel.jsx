@@ -1,99 +1,225 @@
-export default function NotificationPanel({ notifications, onClose }) {
+import { useState } from "react";
+
+export default function NotificationPanel({
+  notifications,
+  onClose,
+  onMarkAsRead,
+  onMarkAllAsRead,
+}) {
+  const [filter, setFilter] = useState("unread"); // all, unread, read
+
   const getNotificationStyle = (type) => {
     switch (type) {
       case "AUCTION_WINNER":
         return {
           icon: "🎉",
-          bgColor: "bg-green-50",
-          textColor: "text-green-800",
+          bgColor: "bg-linear-to-r from-green-50 to-emerald-50",
+          textColor: "text-green-900",
           borderColor: "border-l-green-500",
+          iconBg: "bg-green-100",
         };
       case "AUCTION_RESULT":
         return {
           icon: "🏁",
-          bgColor: "bg-blue-50",
-          textColor: "text-blue-800",
+          bgColor: "bg-linear-to-r from-blue-50 to-cyan-50",
+          textColor: "text-blue-900",
           borderColor: "border-l-blue-500",
+          iconBg: "bg-blue-100",
         };
       case "BID_PLACED":
         return {
           icon: "💰",
-          bgColor: "bg-purple-50",
-          textColor: "text-purple-800",
+          bgColor: "bg-linear-to-r from-purple-50 to-pink-50",
+          textColor: "text-purple-900",
           borderColor: "border-l-purple-500",
+          iconBg: "bg-purple-100",
         };
       case "OUTBID":
         return {
           icon: "😞",
-          bgColor: "bg-red-50",
-          textColor: "text-red-800",
+          bgColor: "bg-linear-to-r from-red-50 to-orange-50",
+          textColor: "text-red-900",
           borderColor: "border-l-red-500",
+          iconBg: "bg-red-100",
         };
       case "AUCTION_ENDING_SOON":
         return {
           icon: "⏰",
-          bgColor: "bg-orange-50",
-          textColor: "text-orange-800",
+          bgColor: "bg-linear-to-r from-orange-50 to-amber-50",
+          textColor: "text-orange-900",
           borderColor: "border-l-orange-500",
+          iconBg: "bg-orange-100",
         };
       case "NEW_BID_SUCCESS":
         return {
           icon: "✅",
-          bgColor: "bg-green-50",
-          textColor: "text-green-800",
+          bgColor: "bg-linear-to-r from-green-50 to-teal-50",
+          textColor: "text-green-900",
           borderColor: "border-l-green-500",
+          iconBg: "bg-green-100",
         };
       default:
         return {
           icon: "🔔",
-          bgColor: "bg-gray-50",
-          textColor: "text-gray-800",
+          bgColor: "bg-linear-to-r from-gray-50 to-slate-50",
+          textColor: "text-gray-900",
           borderColor: "border-l-gray-500",
+          iconBg: "bg-gray-100",
         };
     }
   };
 
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
+
+  const filteredNotifications = notifications?.filter((n) => {
+    if (filter === "all") return true;
+    if (filter === "unread") return !n.read;
+    if (filter === "read") return n.read;
+    return true;
+  });
+
   return (
-    <div className="w-80 bg-white shadow-xl rounded-2xl border border-gray-200 p-4">
+    <div className="w-80 sm:w-96 bg-white shadow-2xl rounded-2xl border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="flex justify-between items-center border-b border-gray-200 pb-2 mb-3">
-        <h2 className="text-lg font-semibold tracking-tight">Notifications</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-700 transition-colors cursor-pointer text-lg"
-          aria-label="Close notifications"
-        >
-          ✖
-        </button>
+      <div className="p-4 border-b border-gray-200 bg-linear-to-r from-purple-50 to-pink-50">
+        <div className="flex justify-between items-center mb-3">
+          <h2
+            className="text-xl font-bold tracking-tight"
+            style={{ color: "oklch(37.9% .146 265.522)" }}
+          >
+            🔔 Notifications
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700 transition-all hover:rotate-90 duration-300 cursor-pointer text-xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/50"
+            aria-label="Close notifications"
+          >
+            ✖
+          </button>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 text-sm">
+          <button
+            onClick={() => setFilter("unread")}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+              filter === "unread"
+                ? "text-white shadow-md"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+            style={{
+              backgroundColor:
+                filter === "unread" ? "oklch(37.9% .146 265.522)" : undefined,
+            }}
+          >
+            Unread ({notifications?.filter((n) => !n.read).length || 0})
+          </button>
+          <button
+            onClick={() => setFilter("all")}
+            className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+              filter === "all"
+                ? "text-white shadow-md"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+            style={{
+              backgroundColor:
+                filter === "all" ? "oklch(37.9% .146 265.522)" : undefined,
+            }}
+          >
+            All ({notifications?.length || 0})
+          </button>
+        </div>
       </div>
 
       {/* Notification List */}
-      {!notifications || notifications.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-6 text-gray-400 text-sm">
-          <div className="text-2xl mb-2">🔔</div>
-          No notifications yet
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2 max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          {notifications.map((n, i) => {
-            const style = getNotificationStyle(n.type);
-            return (
-              <div
-                key={i}
-                className={`p-3 rounded-lg ${style.bgColor} ${style.textColor} hover:shadow-md transition cursor-pointer border-l-4 ${style.borderColor}`}
-              >
-                <div className="flex items-start gap-2">
-                  <span className="text-lg shrink-0">{style.icon}</span>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{n.message}</p>
-                    {n.time && (
-                      <p className="text-xs opacity-70 mt-1">{n.time}</p>
-                    )}
+      <div className="max-h-[400px] overflow-y-auto">
+        {!filteredNotifications || filteredNotifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+            <div className="text-5xl mb-3">�</div>
+            <p className="text-sm font-medium">
+              {filter === "unread"
+                ? "No unread notifications"
+                : "No notifications yet"}
+            </p>
+            <p className="text-xs mt-1 opacity-75">You're all caught up!</p>
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            {filteredNotifications.map((n, i) => {
+              const style = getNotificationStyle(n.type);
+              return (
+                <div
+                  key={n._id || i}
+                  className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-all duration-200 cursor-pointer group ${
+                    !n.read ? "bg-blue-50/30" : ""
+                  }`}
+                  onClick={() => onMarkAsRead?.(n._id)}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Icon */}
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${style.iconBg} group-hover:scale-110 transition-transform`}
+                    >
+                      <span className="text-xl">{style.icon}</span>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`text-sm font-medium leading-relaxed ${style.textColor}`}
+                      >
+                        {n.message}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-gray-500">
+                          {formatTime(n.createdAt || n.timestamp)}
+                        </p>
+                        {!n.read && (
+                          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Type Badge */}
+                    <div
+                      className={`text-xs px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity ${style.iconBg} ${style.textColor} font-medium shrink-0`}
+                    >
+                      {n.type?.replace(/_/g, " ")}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      {notifications && notifications.length > 0 && (
+        <div className="p-3 bg-gray-50 border-t border-gray-200">
+          <button
+            onClick={() => {
+              onMarkAllAsRead?.();
+            }}
+            className="w-full text-sm font-medium text-center py-2 rounded-lg hover:bg-gray-200 transition-colors"
+            style={{ color: "oklch(37.9% .146 265.522)" }}
+          >
+            Mark all as read
+          </button>
         </div>
       )}
     </div>

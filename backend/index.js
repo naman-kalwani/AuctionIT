@@ -314,7 +314,7 @@ setInterval(async () => {
             user: bidderId,
             auction: auction._id,
             type: "AUCTION_ENDING_SOON",
-            message: `⏰ Auction "${auction.title}" ends in 5 minutes! You're winning at ₹${auction.currentBid}`,
+            message: `Auction "${auction.title}" ends in 5 minutes! You're winning at ₹${auction.currentBid}`,
           });
           if (onlineUsers.has(bidderId)) {
             io.to(onlineUsers.get(bidderId)).emit("notification", {

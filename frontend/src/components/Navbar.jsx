@@ -6,12 +6,14 @@ export default function Navbar({
   user,
   notifications = [],
   loadNotifications,
+  markAsRead,
+  markAllAsRead,
   onLogout,
   onNavigate,
 }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const unread = notifications.length;
+  const unread = notifications.filter((n) => !n.read).length;
   const location = useLocation();
 
   const notifRef = useRef(null);
@@ -78,6 +80,8 @@ export default function Navbar({
                   <NotificationPanel
                     notifications={notifications}
                     onClose={() => setNotifOpen(false)}
+                    onMarkAsRead={markAsRead}
+                    onMarkAllAsRead={markAllAsRead}
                   />
                 </div>
               )}

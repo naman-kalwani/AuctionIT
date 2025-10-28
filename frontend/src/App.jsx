@@ -42,6 +42,45 @@ export default function App() {
     }
   }, [user]);
 
+  const markAsRead = useCallback(
+    async (notificationId) => {
+      if (!user || !notificationId) return;
+      try {
+        await api.put(
+          `/api/notifications/${notificationId}/read`,
+          {},
+          {
+            headers: { Authorization: `Bearer ${user.token}` },
+          }
+        );
+        // Update local state
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
+        );
+      } catch (err) {
+        console.error("mark as read error:", err);
+      }
+    },
+    [user]
+  );
+
+  const markAllAsRead = useCallback(async () => {
+    if (!user) return;
+    try {
+      await api.put(
+        "/api/notifications/mark-all-read",
+        {},
+        {
+          headers: { Authorization: `Bearer ${user.token}` },
+        }
+      );
+      // Update local state
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      console.error("mark all as read error:", err);
+    }
+  }, [user]);
+
   // connect socket & handle notifications
   useEffect(() => {
     if (!user) return;
@@ -76,6 +115,8 @@ export default function App() {
         user={user}
         notifications={notifications}
         loadNotifications={loadNotifications}
+        markAsRead={markAsRead}
+        markAllAsRead={markAllAsRead}
         onLogout={handleLogout}
         onNavigate={navigate}
       />
