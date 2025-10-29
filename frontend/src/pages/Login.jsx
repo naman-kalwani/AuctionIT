@@ -16,8 +16,8 @@ export default function Login() {
     const errors = {};
     if (touched.email) {
       if (!email.trim()) errors.email = "Email is required.";
-      else if (!/^.+@()$/.test(email));
-      errors.email = "Email must be correct format.";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        errors.email = "Email must be in correct format.";
     }
     if (touched.password) {
       if (!password) errors.password = "Password is required.";
