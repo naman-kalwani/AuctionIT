@@ -16,9 +16,8 @@ export default function Login() {
     const errors = {};
     if (touched.email) {
       if (!email.trim()) errors.email = "Email is required.";
-      else if (!/^.+@(vitstudent\.ac\.in|vit\.ac\.in)$/.test(email))
-      errors.email = "Email must be @vitstudent.ac.in or @vit.ac.in.";
-      // else if (!/^.+@()$/.test(email));
+      else if (!/^.+@()$/.test(email));
+      errors.email = "Email must be correct format.";
     }
     if (touched.password) {
       if (!password) errors.password = "Password is required.";

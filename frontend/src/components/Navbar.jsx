@@ -193,7 +193,7 @@ export default function Navbar({
               if (path === "/login" || path === "/signup") onNavigate?.("/");
               else onNavigate?.("/login");
             }}
-            className="px-3 py-1 rounded-xl transition text-white"
+            className="px-3 py-1 rounded-xl transition text-white cursor-pointer"
             style={{ backgroundColor: "oklch(37.9% .146 265.522)" }}
           >
             {location?.pathname === "/" ? "Login / Signup" : "Home"}

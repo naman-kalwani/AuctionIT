@@ -23,9 +23,9 @@ export default function Footer() {
               AuctionIT💸
             </h3>
             <p className="text-gray-400 text-sm sm:text-base mb-4 max-w-md">
-              🗿 VIT's Campus Marketplace — Trade textbooks, gadgets, hostel
+              Campus Marketplace — Trade textbooks, gadgets, hostel
               stuff & more! Built by students, for students. Real-time bidding
-              with verified VITians only.
+              with verified users only.
             </p>
             {/* Social Icons */}
             <div className="flex gap-4">

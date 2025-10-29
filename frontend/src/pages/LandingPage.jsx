@@ -11,7 +11,6 @@ import {
   FaStar,
 } from "react-icons/fa";
 import { api } from "../api";
-import Footer from "../components/Footer";
 
 export default function LandingPage() {
   const { user } = useAuth();
@@ -70,7 +69,7 @@ export default function LandingPage() {
   return (
     <div className="w-full min-h-screen bg-gray-50 text-gray-900 overflow-x-hidden">
       {/* Hero Section */}
-      <section className="relative flex flex-col items-center justify-center text-center py-16 md:py-24 px-6 bg-white">
+      <section className="relative flex flex-col items-center justify-center text-center py-8 md:py-12 px-6 bg-white">
         {/* Floating Elements */}
         <div className="absolute top-20 left-10 w-20 h-20 bg-purple-200 rounded-full blur-3xl opacity-50 animate-pulse"></div>
         <div
@@ -85,7 +84,7 @@ export default function LandingPage() {
           className="inline-block px-4 py-2 bg-purple-100 rounded-full text-sm font-semibold mb-6"
           style={{ color: "oklch(37.9% .146 265.522)" }}
         >
-          🗿 Join VIT Students in Trading & Bidding!
+          Join fellow Students in Trading & Bidding! 🗿
         </motion.div>
 
         <motion.h1
@@ -95,9 +94,7 @@ export default function LandingPage() {
           className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight max-w-4xl text-black"
         >
           Campus Marketplace for{" "}
-          <span style={{ color: "oklch(37.9% .146 265.522)" }}>
-            VIT Students💸
-          </span>
+          <span style={{ color: "oklch(37.9% .146 265.522)" }}>Students💸</span>
         </motion.h1>
 
         <motion.p
@@ -107,8 +104,8 @@ export default function LandingPage() {
           className="mt-6 text-base md:text-xl text-gray-600 max-w-2xl leading-relaxed"
         >
           Sell your old textbooks, gadgets, or hostel stuff. Bid on amazing
-          deals from fellow VITians. From study materials to electronics — all
-          in a <span className="font-bold text-blue-600">safe</span> and
+          deals from fellow mates. From study materials to electronics — all in
+          a <span className="font-bold text-blue-600">safe</span> and
           student-friendly platform.
         </motion.p>
 
@@ -123,7 +120,7 @@ export default function LandingPage() {
             className="px-8 py-4 rounded-xl font-bold text-white shadow-xl transition-all duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer"
             style={{ backgroundColor: "oklch(37.9% .146 265.522)" }}
           >
-            🚀 Start Trading Now
+            🚀 Start Bidding Now
           </button>
           <button
             onClick={() => navigate("/login")}
@@ -151,7 +148,7 @@ export default function LandingPage() {
             🔥 Hot Deals on Campus
           </h3>
           <p className="text-gray-600 text-center mb-8 max-w-2xl mx-auto">
-            Check out what your fellow VITians are selling. Snag great deals
+            Check out what your fellow students are selling. Snag great deals
             before they're gone!
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -223,7 +220,7 @@ export default function LandingPage() {
             className="text-3xl md:text-5xl font-extrabold text-center mb-4"
             style={{ color: "oklch(37.9% .146 265.522)" }}
           >
-            Why VIT Students Love Us?
+            Why Campus Students Love Us?
           </h2>
           <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto text-lg">
             Built by students, for students — your go-to platform for campus
@@ -250,7 +247,7 @@ export default function LandingPage() {
                 {
                   icon: FaShieldAlt,
                   title: "Safe & Trusted",
-                  desc: "Trade only with verified VIT students. Your hostel buddies, your classmates — all in one place.",
+                  desc: "Trade only with verified campus students. Your hostel buddies, your classmates — all in one place.",
                   iconBg: "bg-green-400",
                   iconColor: "text-white",
                 },
@@ -301,7 +298,7 @@ export default function LandingPage() {
             className="text-3xl md:text-5xl font-extrabold text-center mb-4"
             style={{ color: "oklch(37.9% .146 265.522)" }}
           >
-            What VITians Say
+            What Students Say
           </h2>
           <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto text-lg">
             Real stories from real students who've traded on our platform!
